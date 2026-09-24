@@ -133,8 +133,8 @@ mterm utile. Le motivazioni delle scelte di fondo sono in
 
 <h3 id="ci-release" data-index="CI;release;tag">CI e release</h3>
 <p>A ogni push su <code>main</code> e a ogni pull request GitHub Actions esegue <code>make test</code> e
-<code>make dist</code> su Ubuntu 24.04, e segnala con un avviso se l'eseguibile registrato non coincide con quello
-appena ricostruito. Su un tag <code>v*</code> pubblica anche una release con i due binari e le somme SHA-256; le note
+<code>make dist</code> su Ubuntu 24.04 (<code>check-docs.py</code>, dentro <code>make test</code>, verifica che
+l'eseguibile registrato esista e porti la versione giusta). Su un tag <code>v*</code> pubblica anche una release con i due binari e le somme SHA-256; le note
 sono il messaggio del tag annotato. Per rilasciare:</p>
 <ol class="steps">
   <li>Aggiorna la versione in <code>help.go</code> (<code>"mterm 1.0"</code>), <code>README.md</code>,

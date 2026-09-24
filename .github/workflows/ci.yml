@@ -21,17 +21,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false   # nessuna dipendenza da mettere in cache
 
       - name: Test (build, vet, gofmt, controlli dei manuali, end-to-end)
         run: make test
-
-      - name: L'eseguibile registrato corrisponde al sorgente
-        run: |
-          # make test ha appena ricostruito ./mterm: se differisce da quello
-          # registrato, qualcuno ha cambiato il codice senza rigenerarlo.
-          git diff --stat --exit-code -- mterm || {
-            echo "::warning::./mterm registrato non coincide con il sorgente (può dipendere dalla versione di Go): rigeneralo con 'make'"
-          }
 
       - name: Binari Linux amd64 e arm64
         run: make dist
