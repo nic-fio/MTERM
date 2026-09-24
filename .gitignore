@@ -1,0 +1,8 @@
+# Prodotti e file di lavoro.
+# ./mterm invece È registrato: il repository contiene l'eseguibile pronto.
+/dist/
+*.bundle
+# File salvati con Ctrl-a s dentro una sessione
+mterm-*-w*-*.txt
+mterm-*-w*-*.raw
+__pycache__/

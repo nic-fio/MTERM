@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mterm — Documentazione</title>
+<meta name="description" content="Documentazione di mterm, gestore di sessioni di terminale staccabili senza emulazione: manuale utente, manuale tecnico, decisioni e storia.">
+<link rel="stylesheet" href="assets/docs.css">
+<style>
+  .home { max-width: 58rem; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem) 4rem; }
+  .home .cards { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+  .home .card { display: block; color: var(--text); text-decoration: none; }
+  .home .card:hover { border-color: var(--accent); text-decoration: none; }
+  .home .card h4 { color: var(--accent); }
+  .home pre { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="home">
+  <header class="titlepage">
+    <div class="kicker">Documentazione</div>
+    <h1>mterm</h1>
+    <p class="lead">Gestore di sessioni di terminale staccabili, come <code>screen</code> ma senza emulazione: i
+    programmi restano accesi quando chiudi il terminale, ti riattacchi e ritrovi tutto, e colori e programmi moderni
+    passano intatti. Un unico eseguibile, senza dipendenze.</p>
+    <div class="meta"><span><b>Versione</b> 1.0</span><span><b>Sistema</b> Linux x86-64 e ARM64</span></div>
+  </header>
+
+  <div class="cards">
+    <a class="card" href="manuale-utente.html"><div class="icon">&gt;_</div><h4>Manuale utente</h4>
+      <p>Installare e usare mterm: sessioni, finestre, salvataggio dello schermo, problemi e soluzioni, recupero dopo
+      un guasto, tutti i comandi e i tasti.</p></a>
+    <a class="card" href="manuale-tecnico.html"><div class="icon">{ }</div><h4>Manuale tecnico</h4>
+      <p>Architettura client/demone, protocollo, buffer di replay, modi del terminale, barra di stato, PTY, test.</p></a>
+    <a class="card" href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md"><div class="icon">&#8801;</div><h4>Decisioni e storia</h4>
+      <p>Perché mterm è fatto così: le scelte di progetto e la storia.</p></a>
+    <a class="card" href="https://github.com/nic-fio/MTERM"><div class="icon">&lt;/&gt;</div><h4>Codice sorgente</h4>
+      <p>Il repository su GitHub, con l'eseguibile pronto e le release.</p></a>
+  </div>
+
+  <footer class="doc-footer">Copyright (c) 2026 nic-fio. Tutti i diritti riservati.</footer>
+</div>
+</body>
+</html>

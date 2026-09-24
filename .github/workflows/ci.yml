@@ -1,0 +1,81 @@
+# Build e test di mterm a ogni push e pull request; su un tag di versione (v*)
+# pubblica anche una GitHub Release con i binari costruiti qui dal sorgente del tag.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test (build, vet, gofmt, controlli dei manuali, end-to-end)
+        run: make test
+
+      - name: L'eseguibile registrato corrisponde al sorgente
+        run: |
+          # make test ha appena ricostruito ./mterm: se differisce da quello
+          # registrato, qualcuno ha cambiato il codice senza rigenerarlo.
+          git diff --stat --exit-code -- mterm || {
+            echo "::warning::./mterm registrato non coincide con il sorgente (può dipendere dalla versione di Go): rigeneralo con 'make'"
+          }
+
+      - name: Binari Linux amd64 e arm64
+        run: make dist
+
+      - name: Conserva i binari
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # l'oggetto del tag annotato, per le note di rilascio
+          fetch-tags: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Crea la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # il messaggio del tag annotato diventa la descrizione della release
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > notes.md
+          [ -s notes.md ] || echo "mterm $GITHUB_REF_NAME" > notes.md
+          cat >> notes.md <<'NOTES'
+
+          Costruito e testato da GitHub Actions a partire da questo tag.
+
+          **Scarica** `mterm-linux-amd64` (PC, tablet x86-64) oppure
+          `mterm-linux-arm64` (Raspberry Pi, ARM a 64 bit), rinominalo in
+          `mterm` e rendilo eseguibile con `chmod +x mterm`. Controlla il
+          download con `sha256sum -c SHA256SUMS --ignore-missing`.
+
+          Manuale utente: https://nic-fio.github.io/MTERM/
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/mterm-linux-* dist/SHA256SUMS \
+            --title "mterm $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

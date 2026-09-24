@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mterm — Manuale tecnico</title>
+<meta name="description" content="Manuale tecnico di mterm: architettura a client e demone, protocollo sul socket UNIX, buffer di replay, modi DEC tracciati, barra di stato, PTY, test end-to-end, limiti noti.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<div class="topbar">
+  <button class="btn menu-btn" type="button" aria-label="Apri l'indice">&#9776; Indice</button>
+  <strong>mterm — Manuale tecnico</strong>
+</div>
+<div class="layout">
+<nav class="sidebar" aria-label="Indice">
+  <div class="brand">
+    <div class="brand-logo">{ }</div>
+    <div class="brand-text"><strong>mterm — Manuale tecnico</strong><span>versione 1.0</span></div>
+  </div>
+  <div class="search">
+    <input type="search" placeholder="Cerca  ( / )" aria-label="Cerca">
+    <div class="search-results" role="listbox"></div>
+  </div>
+  <div class="toc"></div>
+  <div class="side-tools">
+    <button class="btn print-btn" type="button">Stampa / PDF</button>
+    <a class="btn" href="manuale-utente.html">Manuale utente</a>
+  </div>
+</nav>
+
+<main>
+
+<header class="titlepage">
+  <div class="kicker">Manuale tecnico</div>
+  <h1>Dentro mterm</h1>
+  <p class="lead">Come è fatto mterm: i due processi, il protocollo sul socket, il buffer di replay, il tracciamento dei
+  modi del terminale, la barra di stato, la gestione delle PTY, i test e i limiti noti. Per chi deve modificarlo o
+  capire perché si comporta in un certo modo.</p>
+  <div class="meta">
+    <span><b>Versione</b> 1.0</span>
+    <span><b>Linguaggio</b> Go 1.24, solo libreria standard</span>
+    <span><b>Sistema</b> Linux</span>
+  </div>
+</header>
+
+<section class="unnumbered no-toc">
+  <h2 class="unnumbered" id="contents">Sommario</h2>
+  <div class="toc-print" id="contents-list"></div>
+  <p>Premi <kbd>/</kbd> per cercare. L'<a href="#index">indice analitico</a> in fondo elenca funzioni, file e
+  argomenti.</p>
+</section>
+
+<!-- ===================================================================== -->
+<h2 id="panoramica">Panoramica</h2>
+
+<p class="chapter-intro">Cosa copre questo manuale, i principi su cui si regge mterm e dove sta ogni cosa nel
+codice.</p>
+
+<h3 id="cosa-copre">Cosa copre questo manuale</h3>
+<p>L'uso quotidiano è nel <a href="manuale-utente.html">manuale utente</a>. Qui si descrive il funzionamento interno:
+tutto quello che serve per correggere un difetto o aggiungere una funzione senza rompere le proprietà che rendono
+mterm utile. Le motivazioni delle scelte di fondo sono in
+<a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md">decisioni e storia</a>.</p>
+
+<h3 id="principi">Principi</h3>
+<div class="cards">
+  <div class="card"><div class="icon">&#8646;</div><h4>Nessuna emulazione</h4>
+    <p>L'output del programma arriva al terminale reale byte per byte. mterm non tiene un modello dello schermo e
+    non riscrive sequenze.</p></div>
+  <div class="card"><div class="icon">+</div><h4>Aggiunte solo in coda</h4>
+    <p>Gli unici byte generati da mterm sono la barra di stato, l'overlay delle finestre, il ripristino dei modi e la
+    pulizia al cambio finestra.</p></div>
+  <div class="card"><div class="icon">1</div><h4>Un binario, zero dipendenze</h4>
+    <p>Solo la libreria standard di Go, <code>CGO_ENABLED=0</code>: un eseguibile statico che gira su qualunque
+    Linux della stessa architettura.</p></div>
+  <div class="card"><div class="icon">&#10003;</div><h4>Verificato dal vivo</h4>
+    <p>Ogni proprietà è coperta da un test end-to-end che guida il vero eseguibile attraverso una PTY reale.</p></div>
+</div>
+
+<h3 id="mappa-file" data-index="mappa dei file">Mappa dei file</h3>
+<p>Tutto è nel <code>package main</code>. I file hanno il vincolo <code>//go:build linux</code>.</p>
+<table id="file-map">
+  <thead><tr><th>File</th><th>Righe</th><th>Contenuto</th></tr></thead>
+  <tbody>
+    <tr><td><code>main.go</code></td><td>261</td><td>Smistamento dei comandi, <code>cmdNew</code> (avvio del demone), <code>cmdKill</code>, <code>cmdList</code>, percorsi di socket e log, <code>isAlive</code>, <code>pickName</code>, <code>mustName</code>.</td></tr>
+    <tr><td><code>server.go</code></td><td>763</td><td>Il demone: finestre e PTY, lettori delle finestre, buffer di replay, modi DEC tracciati, ripristino dello schermo, parser dei frame dal client, log, arresto.</td></tr>
+    <tr><td><code>client.go</code></td><td>792</td><td>Il client di attach: raw mode, cicli di lettura/uscita/ingresso, tasti <kbd>Ctrl-a</kbd>, barra di stato e regione di scorrimento, overlay, pulizia al distacco, salvataggio del buffer e conversione in testo.</td></tr>
+    <tr><td><code>pty_linux.go</code></td><td>47</td><td>Apertura della PTY via <code>/dev/ptmx</code> e ioctl, <code>setWinsize</code>.</td></tr>
+    <tr><td><code>term_linux.go</code></td><td>70</td><td>Dimensione del terminale, raw mode e ripristino, elenchi dei segnali.</td></tr>
+    <tr><td><code>help.go</code></td><td>256</td><td>Contenuti della guida (<code>helpSections</code>, <code>helpExamples</code>, <code>descrizione</code>), pagina stile man, scelta tra TUI, pager e testo.</td></tr>
+    <tr><td><code>tui.go</code></td><td>421</td><td>La guida interattiva a schede.</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================================================================== -->
+<h2 id="repository">Repository e strumenti</h2>
+
+<p class="chapter-intro">Cosa c'è nel repository, come si costruisce, come si rilascia e come si recupera.</p>
+
+<h3 id="struttura" data-index="struttura del repository">Struttura</h3>
+<table>
+  <thead><tr><th>Dove</th><th>Cosa</th></tr></thead>
+  <tbody>
+    <tr><td><code>*.go</code>, <code>go.mod</code></td><td>Il programma. Nessun <code>go.sum</code>: non ci sono dipendenze.</td></tr>
+    <tr><td><code>mterm</code></td><td>L'eseguibile Linux x86-64, <strong>registrato nel repository</strong> perché un <code>git clone</code> basti anche senza Go. Va rigenerato con <code>make</code> e registrato insieme a ogni modifica del codice.</td></tr>
+    <tr><td><code>tests/</code></td><td>Sei test end-to-end in Python 3 (vedi <a href="#test">Test</a>).</td></tr>
+    <tr><td><code>docs/</code></td><td>Questi manuali, <code>index.html</code>, <code>decisioni-e-storia.md</code>, <code>assets/</code> (stile, script, Mermaid). Pubblicati con GitHub Pages.</td></tr>
+    <tr><td><code>tools/</code></td><td><code>setup-dev.sh</code> (pacchetti e identità git), <code>backup.sh</code> (bundle git), <code>check-docs.py</code> (controlli dei manuali).</td></tr>
+    <tr><td><code>Makefile</code>, <code>build.sh</code></td><td>Build e test; <code>build.sh</code> è l'alternativa senza <code>make</code>.</td></tr>
+    <tr><td><code>.github/workflows/ci.yml</code></td><td>CI e release.</td></tr>
+    <tr><td><code>CLAUDE.md</code></td><td>Accordi di lavoro e decisioni da non riaprire.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="build" data-index="make;build;build.sh">Build</h3>
+<p>La build è una sola riga, <code>CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o mterm .</code>, avvolta dal
+<code>Makefile</code>:</p>
+<table>
+  <thead><tr><th>Comando</th><th>Effetto</th></tr></thead>
+  <tbody>
+    <tr><td><code>make</code></td><td>Ricostruisce <code>./mterm</code> (statico, linux/amd64).</td></tr>
+    <tr><td><code>make test</code></td><td>Ricostruisce, poi <code>go vet</code>, <code>gofmt</code>, <code>tools/check-docs.py</code> e tutti i test end-to-end. Fallisce al primo errore.</td></tr>
+    <tr><td><code>make e2e</code></td><td>Solo i test end-to-end, sull'eseguibile così com'è: non serve Go.</td></tr>
+    <tr><td><code>make docs-check</code></td><td>Solo i controlli dei manuali.</td></tr>
+    <tr><td><code>make dist</code></td><td><code>dist/mterm-linux-amd64</code>, <code>dist/mterm-linux-arm64</code> e <code>SHA256SUMS</code>.</td></tr>
+    <tr><td><code>make install</code></td><td>Copia <code>./mterm</code> in <code>$(PREFIX)/bin</code>, normalmente <code>~/.local/bin</code>.</td></tr>
+  </tbody>
+</table>
+<p>Il <code>Makefile</code> usa il <code>go</code> del <code>PATH</code> o, in mancanza, <code>~/.local/go/bin/go</code>.
+<code>go.mod</code> chiede Go 1.24, la versione del pacchetto <code>golang-go</code> di Debian 13: sul tablet basta
+<code>apt</code>.</p>
+
+<h3 id="ci-release" data-index="CI;release;tag">CI e release</h3>
+<p>A ogni push su <code>main</code> e a ogni pull request GitHub Actions esegue <code>make test</code> e
+<code>make dist</code> su Ubuntu 24.04, e segnala con un avviso se l'eseguibile registrato non coincide con quello
+appena ricostruito. Su un tag <code>v*</code> pubblica anche una release con i due binari e le somme SHA-256; le note
+sono il messaggio del tag annotato. Per rilasciare:</p>
+<ol class="steps">
+  <li>Aggiorna la versione in <code>help.go</code> (<code>"mterm 1.0"</code>), <code>README.md</code>,
+      <code>docs/index.html</code> e nei due manuali. <code>make test</code> controlla che coincidano.</li>
+  <li><code>make</code> e registra anche <code>./mterm</code>.</li>
+  <li><code>git tag -a v1.1.0 -m "mterm 1.1.0: …novità…"</code></li>
+  <li><code>git push origin main v1.1.0</code></li>
+</ol>
+
+<h3 id="recupero-tecnico" data-index="recupero;bundle">Recupero e backup</h3>
+<p>Il repository è pensato perché un <code>git clone</code> basti a riavere tutto: mterm non ha file personali, e
+l'eseguibile pronto è registrato. <code>tools/setup-dev.sh</code> ricrea l'unica cosa che un clone non porta, l'identità
+git locale (indirizzo <em>noreply</em> di GitHub, per tenere fuori dalla storia pubblica quello personale), e indica i
+pacchetti mancanti. <code>tools/backup.sh DIR</code> scrive un <code>git bundle --all</code> verificato, da cui si clona
+senza rete.</p>
+
+<!-- ===================================================================== -->
+<h2 id="architettura">Architettura</h2>
+
+<p class="chapter-intro">Due ruoli nello stesso eseguibile, collegati da un socket UNIX.</p>
+
+<h3 id="processi" data-index="demone;client;__daemon">I processi</h3>
+<pre class="mermaid">
+flowchart LR
+  TERM["terminale reale"] &lt;--&gt;|"stdin / stdout&lt;br/&gt;raw mode"| CLI["client&lt;br/&gt;mterm attach"]
+  CLI &lt;--&gt;|"socket UNIX&lt;br/&gt;NOME.sock"| DAE["demone&lt;br/&gt;mterm __daemon NOME"]
+  DAE &lt;--&gt;|"master PTY"| P0["finestra 0&lt;br/&gt;$SHELL o comando"]
+  DAE &lt;--&gt;|"master PTY"| P1["finestra 1&lt;br/&gt;$SHELL"]
+  DAE -.->|"log"| LOG[("NOME.log")]
+</pre>
+<ul>
+  <li><strong>Demone</strong> (<code>runServer</code>): uno per sessione. È lo stesso eseguibile lanciato come
+      <code>mterm __daemon NOME [comando…]</code>, sottocomando nascosto. Possiede le PTY, i processi figli, i buffer di
+      replay, e ascolta sul socket. Non ha terminale: stdin/stdout/stderr su <code>/dev/null</code>, nuova sessione
+      POSIX (<code>Setsid</code>), quindi sopravvive alla chiusura del terminale che l'ha creato.</li>
+  <li><strong>Client</strong> (<code>attach</code>): il processo che l'utente vede. Mette il terminale in raw mode e fa
+      da tubo. Ce n'è al più uno collegato per sessione.</li>
+  <li><strong>Comandi brevi</strong> (<code>ls</code>, <code>kill</code>): aprono il socket, fanno una domanda, chiudono.</li>
+</ul>
+
+<h3 id="ciclo-vita" data-index="cmdNew;ciclo di vita">Ciclo di vita di una sessione</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as mterm new NOME
+  participant D as demone
+  participant S as shell
+  U->>D: exec __daemon NOME (Setsid, fd su /dev/null)
+  D->>D: Listen NOME.sock, apre il log
+  D->>S: openPTY + startShell
+  loop fino a 2 s
+    U->>D: ping 'P'
+    D-->>U: 'o'
+  end
+  U->>D: 'A' (attach)
+  U->>D: 'S' righe colonne
+  D-->>U: modi + pulizia + replay + 'M' metadati
+  Note over U,D: tubo: 'D' in entrambe le direzioni
+  S--xD: la shell esce (EOF sul master)
+  D->>D: closeWindow, ultima: shutdown
+  D--xU: socket chiuso: [sessione terminata]
+</pre>
+<p><code>cmdNew</code> rifiuta un nome già vivo, lancia il demone con <code>exec.Command(os.Executable(), "__daemon",
+…)</code>, rilascia il processo e interroga il socket ogni 10 ms per al massimo 200 volte. Appena il demone risponde
+al ping, si comporta come <code>attach</code>. Se non risponde, l'errore rimanda al log.</p>
+<p>Il demone termina in <code>shutdown</code> (protetto da <code>sync.Once</code>): uccide i figli, chiude il listener,
+rimuove il socket, <code>os.Exit(0)</code>. Ci arriva quando si chiude l'ultima finestra, con il comando
+<code>K</code>, o con <code>SIGTERM</code>/<code>SIGHUP</code>.</p>
+
+<h3 id="percorsi" data-index="sockDir;sockPath;logPath;XDG_RUNTIME_DIR">Percorsi e nomi</h3>
+<p><code>sockDir</code> è <code>$XDG_RUNTIME_DIR/mterm</code>, o <code>/tmp/mterm-UID</code> se la variabile manca,
+creata con permessi <code>0700</code>. Dentro: <code>NOME.sock</code> e <code>NOME.log</code>. La protezione tra utenti
+è tutta nei permessi della cartella: il socket non ha autenticazione.</p>
+<p><code>isAlive</code> è il test di vita: si collega (timeout 500 ms), manda <code>P</code>, si aspetta
+<code>o</code>. Non disturba un client attaccato. <code>cmdList</code> lo usa su ogni <code>*.sock</code> e rimuove
+quelli che non rispondono. <code>pickName</code> sceglie il più piccolo intero non usato da un <code>.sock</code>.
+<code>mustName</code> rifiuta nomi vuoti o con <code>/</code>, spazio o tab.</p>
+
+<!-- ===================================================================== -->
+<h2 id="protocollo">Il protocollo</h2>
+
+<p class="chapter-intro">Un protocollo binario minimo, asimmetrico, sul socket UNIX.</p>
+
+<h3 id="modalita" data-index="P;K;A;modalità">Il primo byte: la modalità</h3>
+<table>
+  <thead><tr><th>Byte</th><th>Significato</th><th>Risposta</th></tr></thead>
+  <tbody>
+    <tr><td><code>P</code></td><td>Ping, usato da <code>isAlive</code>.</td><td><code>o</code>, poi chiusura.</td></tr>
+    <tr><td><code>K</code></td><td>Kill: termina la sessione.</td><td><code>o</code>, poi <code>shutdown</code>.</td></tr>
+    <tr><td><code>A</code></td><td>Attach: da qui in poi frame nei due sensi.</td><td>Frame del demone.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="frame-client" data-index="parser;frame client">Frame dal client al demone</h3>
+<pre class="code" data-lang="text" data-title="client → demone">
+'S' + righe(uint16 BE) + colonne(uint16 BE)   dimensione (righe già ridotte di 1 per la barra)
+'D' + lunghezza(uint16 BE) + dati             input per la finestra corrente (max 65535 per frame)
+'C'                                           crea una finestra
+'n' / 'p'                                     finestra successiva / precedente
+'g' + id(uint16 BE)                           vai alla finestra con quell'id
+'x'                                           chiudi la finestra corrente
+'b'                                           chiedi il buffer di replay (risposta: frame 'B')
+</pre>
+<p>Il demone li legge con <code>parser.feed</code>, una macchina a stati (<code>stType</code>, <code>stSize</code>,
+<code>stDlen</code>, <code>stData</code>, <code>stGoto</code>) che regge frame spezzati tra più letture. I dati di un
+frame <code>D</code> vengono scritti sul master della PTY a pezzi, man mano che arrivano. I byte di tipo sconosciuto
+vengono ignorati.</p>
+
+<h3 id="frame-demone" data-index="push;frame demone;sendMeta">Frame dal demone al client</h3>
+<p>Formato unico: <code>tipo(1) + lunghezza(uint32 BE) + payload</code>, scritto da <code>push</code> sotto il mutex
+<code>cmu</code>.</p>
+<table>
+  <thead><tr><th>Tipo</th><th>Payload</th></tr></thead>
+  <tbody>
+    <tr><td><code>D</code></td><td>Output grezzo della finestra corrente, oppure il pacchetto di ripristino (modi + pulizia + replay).</td></tr>
+    <tr><td><code>M</code></td><td>Metadati testuali: prima riga <code>id_corrente\talt</code> (<code>alt</code> = 1 se la finestra è sullo schermo alternato), poi una riga <code>id\ttitolo</code> per finestra.</td></tr>
+    <tr><td><code>B</code></td><td>Copia del buffer di replay della finestra corrente, in risposta a <code>b</code>.</td></tr>
+  </tbody>
+</table>
+<p>Se una scrittura verso il client fallisce, <code>push</code> scarta subito quel client: l'output delle finestre non
+deve mai restare bloccato su una connessione morta.</p>
+
+<!-- ===================================================================== -->
+<h2 id="demone">Il demone</h2>
+
+<p class="chapter-intro"><code>server.go</code>: finestre, buffer, modi, ripristino.</p>
+
+<h3 id="finestre" data-index="win;newWindow;createWindow;closeWindow">Finestre</h3>
+<p>Una finestra (<code>win</code>) è: id, master della PTY, <code>exec.Cmd</code>, titolo, flag <code>alt</code>, buffer
+di replay, mappa dei modi, coda per le sequenze spezzate. Il <code>server</code> tiene la lista <code>wins</code>,
+l'indice corrente <code>cur</code> e il prossimo id <code>nextID</code>, che cresce sempre: gli id non si riusano.</p>
+<p>Il titolo è il nome base del comando o di <code>$SHELL</code>, fissato alla creazione (<code>titleFor</code>). La
+prima finestra usa il comando passato dopo <code>--</code>; <code>createWindow</code> (frame <code>C</code>) avvia
+sempre la shell. <code>closeWindow</code> chiude il master, uccide il processo, rimuove la finestra, riallinea
+<code>cur</code> e ridisegna quella nuova; se era l'ultima chiama <code>shutdown</code>.</p>
+
+<h3 id="winreader" data-index="winReader;drenaggio">Lettura delle finestre</h3>
+<p>Ogni finestra ha la sua goroutine <code>winReader</code>, che legge il master a blocchi di 32 KiB
+<strong>sempre</strong>, anche quando la finestra non è visibile o nessuno è attaccato: così un programma non resta mai
+bloccato in scrittura. Per ogni blocco, sotto <code>s.mu</code>: aggiorna i modi (<code>scanModes</code>), lo accoda al
+buffer (<code>record</code>); poi, se la finestra è quella corrente, lo inoltra con <code>push('D')</code> e, se lo
+stato dello schermo alternato è cambiato, rimanda i metadati. Un errore di lettura (la shell è uscita) chiude la
+finestra. Un <code>panic</code> viene registrato nel log con lo stack e chiude solo quella finestra.</p>
+
+<h3 id="replay" data-index="record;bufMax;buffer di replay">Buffer di replay</h3>
+<p>Ogni finestra conserva gli ultimi byte di output, fino a <code>bufMax</code> = 5 MiB. Superata la soglia,
+<code>record</code> tiene solo l'ultima metà (<code>bufKeep</code>) e sposta il taglio in avanti fino al primo
+<code>ESC</code>, per non ripartire da metà di una sequenza di escape.</p>
+<p>Il buffer serve a ripristinare lo schermo al reattach e al cambio finestra <strong>senza</strong> dipendere dal
+fatto che il programma si ridisegni da solo al <code>SIGWINCH</code>: una shell ferma o una TUI che ridisegna solo in
+parte (Claude Code) tornerebbero altrimenti con lo schermo vuoto. Non è emulazione: sono gli stessi byte, riprodotti.
+Costo: fino a 5 MiB di memoria per finestra.</p>
+
+<h3 id="modi" data-index="trackedModes;scanModes;appendModes;modi DEC;mouse tracking">Modi DEC tracciati</h3>
+<p>Alcuni modi privati del terminale, se lasciati accesi da una finestra, rovinano le altre: il caso tipico è il
+<em>mouse tracking</em> di una TUI, che fa arrivare a una shell ogni movimento del mouse come caratteri a caso. Il
+demone quindi tiene, per ogni finestra, lo stato di un insieme fisso di modi (<code>trackedModes</code>): cursore
+visibile (25), le varie modalità e codifiche del mouse (9, 1000–1006, 1015, 1016), eventi di focus (1004),
+<em>bracketed paste</em> (2004), più lo schermo alternato (47, 1047, 1049 → <code>alt</code>).</p>
+<p><code>scanModes</code> cerca nell'output le sequenze <code>ESC [ ? n;n… h|l</code> e aggiorna lo stato. Gli ultimi
+32 byte di ogni blocco (<code>tailMax</code>) vengono riesaminati insieme al blocco successivo, così una sequenza
+spezzata tra due letture non si perde; riapplicarla due volte è innocuo perché <code>h</code>/<code>l</code> impostano
+uno stato, non lo commutano.</p>
+<p><code>appendModes</code> produce le sequenze che portano il terminale reale allo stato della finestra, nell'ordine
+fisso <code>trackedOrder</code> e preceduto da <code>?1049h/l</code>. Vengono emesse prima del replay: spengono ciò che
+la finestra precedente aveva acceso e riaccendono ciò che serve anche se la sequenza originale è uscita dal buffer per
+taglio.</p>
+
+<h3 id="repaint" data-index="repaint;activate;SIGWINCH;jiggle">Ripristino dello schermo</h3>
+<p><code>repaint(w, cols, rows)</code> manda al client un unico frame <code>D</code> con: modi della finestra,
+<code>ESC [H ESC [2J</code> (pulisce la parte visibile, non lo scrollback: niente <code>3J</code>), buffer di replay.
+Poi manda i metadati e fa un «jiggle» della dimensione della PTY (<code>rows-1</code> e poi <code>rows</code>): il
+programma riceve comunque un <code>SIGWINCH</code> e le TUI si riallineano se il terminale nel frattempo ha cambiato
+dimensione. Lo usano <code>activate</code> (cambio finestra), <code>createWindow</code>, <code>closeWindow</code> e il
+primo ridimensionamento dopo un attach.</p>
+
+<h3 id="attach-demone" data-index="serveClient;needPaint;resize;sfratto">Attach e dimensioni</h3>
+<p><code>serveClient</code> sostituisce il client precedente, chiudendone la connessione (lo «sfratto»: il vecchio
+client vede il socket chiudersi, verifica che la sessione è ancora viva e stampa <em>sessione ripresa altrove</em>).
+Il ripristino non avviene subito: <code>needPaint</code> resta in sospeso fino al primo frame <code>S</code>, quando le
+dimensioni del nuovo terminale sono note. <code>resize</code> applica la dimensione a tutte le finestre, non solo a
+quella corrente.</p>
+
+<h3 id="concorrenza" data-index="mu;cmu;mutex">Concorrenza</h3>
+<p>Due mutex: <code>mu</code> protegge lo stato (finestre, corrente, dimensioni, client, buffer, modi);
+<code>cmu</code> serializza le scritture sul socket, così i frame di goroutine diverse non si mescolano. Regola:
+<code>push</code> non va mai chiamato tenendo <code>mu</code>, perché lo prende lui. Le funzioni copiano sotto
+<code>mu</code> quello che serve e lo rilasciano prima di scrivere.</p>
+
+<h3 id="log-demone" data-index="logf;log;segnali;SIGTERM;SIGHUP">Log e segnali</h3>
+<p>Il demone non ha terminale: il log <code>NOME.log</code> (aperto con <code>O_TRUNC</code>, quindi azzerato a ogni
+nuova sessione con lo stesso nome) è l'unico posto dove può raccontare avvio, attach e distacchi, fallimenti e
+<code>panic</code> (con lo stack, da <code>winReader</code> e <code>serveClient</code>). <code>SIGTERM</code> e
+<code>SIGHUP</code> portano a <code>shutdown</code>, così il socket non resta orfano.</p>
+
+<!-- ===================================================================== -->
+<h2 id="client">Il client</h2>
+
+<p class="chapter-intro"><code>client.go</code>: il tubo, i tasti, la barra.</p>
+
+<h3 id="avvio-client" data-index="attach;enterRaw;raw mode">Avvio</h3>
+<p><code>attach</code> si collega in modalità <code>A</code>, mette stdin in raw mode (<code>enterRaw</code>: niente
+eco, niente modalità canonica, niente segnali da tastiera, niente traduzione dell'output), pulisce lo schermo, imposta
+la regione di scorrimento, manda la dimensione e disegna la barra. Poi lancia tre goroutine e aspetta su
+<code>endCh</code> il motivo della fine: <code>detached</code> (tasto o stdin chiuso) oppure <code>session</code>
+(socket chiuso dal demone). Un gestore di <code>SIGWINCH</code> rimanda la dimensione e ridisegna.</p>
+
+<h3 id="cicli" data-index="readLoop;outputLoop;inputLoop">I tre cicli</h3>
+<ul>
+  <li><code>readLoop</code> legge i frame dal socket e li mette su un canale.</li>
+  <li><code>outputLoop</code> li consuma. Per velocità <strong>coalizza</strong>: dopo un frame drena tutti quelli già
+      in coda e fa una sola <code>write</code> su stdout. Un frame <code>M</code> forza lo svuotamento prima (per
+      l'ordine) e ridisegna la barra; un frame <code>B</code> viene salvato su file. La barra non viene ridisegnata in
+      mezzo all'output: un timer la ridisegna 12 ms dopo che il flusso si ferma, e il tick dell'orologio (1 s) solo se
+      non c'è stato output negli ultimi 40 ms. Così non si spezzano le sequenze dell'app e non c'è sfarfallio.</li>
+  <li><code>inputLoop</code> legge stdin e riconosce il prefisso <kbd>Ctrl-a</kbd> (<code>0x01</code>). Il resto va al
+      demone in frame <code>D</code>; i comandi diventano frame di controllo. Un tasto sconosciuto dopo il prefisso
+      viene inoltrato insieme al prefisso. Se è aperto l'overlay, i tasti vanno a <code>handleOverlayKey</code>.</li>
+</ul>
+
+<h3 id="barra-tecnica" data-index="drawBar;buildBar;setRegion;regione di scorrimento;DECSTBM">Barra di stato e regione di scorrimento</h3>
+<p>La barra occupa l'ultima riga fisica. Al demone il client dichiara <code>righe-1</code>, quindi il programma non
+scrive mai lì; e imposta la regione di scorrimento <code>ESC [1;righe-1 r</code>, così la shell che va a capo in fondo
+scorre sopra la barra invece di trascinarla. Con meno di 3 righe la barra è disattivata e il programma riceve tutte le
+righe.</p>
+<p>Molti programmi, uscendo, azzerano la regione di scorrimento. Per questo <code>drawBar</code> la
+<strong>riafferma a ogni ridisegno</strong> quando la finestra è sullo schermo normale; sullo schermo alternato non la
+tocca, per non interferire con l'app. Lo stato <code>alt</code> arriva dal demone nei metadati. Il disegno è racchiuso
+in <em>Synchronized Update Mode</em> (<code>?2026h</code>…<code>?2026l</code>, ignorato da chi non lo supporta) e tra
+<code>DECSC</code>/<code>DECRC</code> (<code>ESC 7</code>/<code>ESC 8</code>), che salvano e ripristinano posizione e
+attributi del cursore.</p>
+<p><code>buildBar</code> compone: <code>⬢ nome</code>, gli id delle finestre (quella corrente in inverso), e a destra
+<code>utente@host  hh:mm:ss</code> oppure, per 4 secondi, il messaggio di <code>setFlash</code>. Il risultato è largo
+esattamente quanto il terminale; se non ci sta, si toglie prima la parte destra e poi si tronca.</p>
+
+<h3 id="overlay" data-index="overlay;Ctrl-a &quot;">L'overlay delle finestre</h3>
+<p><kbd>Ctrl-a "</kbd> apre un elenco disegnato dal client sopra lo schermo. Mentre è aperto, l'output
+<code>D</code> in arrivo viene <strong>scartato</strong> (non accodato). Alla chiusura, sia con una scelta sia con
+<kbd>Esc</kbd>, il client manda un <code>g</code>: anche con l'id corrente, questo provoca un <code>repaint</code> che
+ricostruisce lo schermo dal buffer, compreso ciò che era stato scartato.</p>
+
+<h3 id="cleanup" data-index="cleanup;distacco">Pulizia al distacco</h3>
+<p><code>cleanup</code> lascia il terminale dell'utente in ordine: se la finestra era sullo schermo alternato esce con
+<code>?1049l</code>; spegne mouse, focus e bracketed paste; rimostra il cursore; azzera gli attributi; toglie la
+regione di scorrimento e cancella la barra. Poi <code>restoreTerm</code> ripristina le impostazioni del terminale.</p>
+
+<h3 id="salvataggio" data-index="saveBuffer;plainText;escLen;Ctrl-a s">Salvataggio e conversione in testo</h3>
+<p><kbd>Ctrl-a s</kbd> manda <code>b</code>; il demone risponde con una copia del buffer in un frame <code>B</code>;
+<code>saveBuffer</code> scrive nella cartella corrente del <em>client</em>
+<code>mterm-SESSIONE-wID-hhmmss.raw</code> (byte grezzi) e <code>.txt</code> (via <code>plainText</code>). Il nome
+della sessione passa da <code>sanitizeName</code>.</p>
+<p><code>plainText</code> non è un emulatore: toglie le sequenze di escape (<code>escLen</code> riconosce CSI, OSC,
+DCS/SOS/PM/APC fino a BEL o ST, designazione del set di caratteri, ESC più un byte) e applica una logica di riga minima:
+<code>\r</code> torna a inizio riga e sovrascrive, backspace, tabulazioni a 8, spazi finali tolti, altri controlli
+ignorati. Barre di avanzamento e prompt riscritti vengono puliti; i movimenti verticali del cursore delle TUI no.</p>
+
+<!-- ===================================================================== -->
+<h2 id="pty">PTY e terminale</h2>
+
+<p class="chapter-intro">Le chiamate di sistema, senza librerie esterne.</p>
+
+<h3 id="openpty" data-index="openPTY;ptmx;TIOCSPTLCK;TIOCGPTN">Aprire una PTY</h3>
+<p><code>openPTY</code> apre <code>/dev/ptmx</code> con <code>O_NOCTTY</code>, sblocca lo slave
+(<code>TIOCSPTLCK</code> = <code>0x40045431</code>) e ne legge il numero (<code>TIOCGPTN</code> =
+<code>0x80045430</code>), restituendo il master e <code>/dev/pts/N</code>. Le due costanti sono quelle della famiglia
+generica di Linux, valide su amd64 e arm64 (non, per esempio, su mips o powerpc).</p>
+
+<h3 id="startshell" data-index="startShell;Setsid;Setctty;O_NOCTTY">Avviare il programma</h3>
+<p><code>startShell</code> apre lo slave con <code>O_NOCTTY</code> (il demone non deve prenderlo come proprio terminale
+di controllo, altrimenti il figlio non potrebbe) e avvia il comando con stdin/stdout/stderr sullo slave,
+<code>Setsid</code> e <code>Setctty</code> sul descrittore 0: il figlio diventa leader di una nuova sessione con lo
+slave come terminale di controllo, quindi il controllo dei job e <kbd>Ctrl-C</kbd> funzionano. L'ambiente è quello del
+demone, cioè di chi ha creato la sessione: <code>TERM</code> compreso, non toccato.</p>
+
+<h3 id="winsize" data-index="setWinsize;termSize;TIOCSWINSZ">Dimensioni</h3>
+<p><code>setWinsize</code> fa <code>TIOCSWINSZ</code> sul master: il kernel manda <code>SIGWINCH</code> al gruppo in
+primo piano. <code>termSize</code> legge la dimensione da stdout, stderr, stdin o <code>/dev/tty</code>, con ripiego
+80×24.</p>
+
+<!-- ===================================================================== -->
+<h2 id="guida" data-index="helpSections;runTUI;displayHelp">Guida integrata</h2>
+<p><code>help.go</code> contiene i contenuti una volta sola: <code>helpSections</code> (comandi e tasti),
+<code>helpExamples</code>, <code>descrizione</code>. Da lì vengono sia la pagina stile man (<code>buildHelp</code>) sia
+le schede della TUI (<code>buildTabs</code> in <code>tui.go</code>). <code>displayHelp</code> sceglie: testo semplice
+senza colori se stdin o stdout non sono un terminale; altrimenti la TUI (schermo alternato, raw mode, 44×10 minimo);
+se la TUI non parte, la pagina man attraverso <code>$PAGER</code>, <code>less -R -F -X</code> o <code>more</code>.</p>
+<p>La versione è nella riga finale della pagina man, <code>"mterm 1.0"</code>: è il valore che
+<code>check-docs.py</code> confronta con manuali, README e con la stringa dentro l'eseguibile registrato.</p>
+
+<!-- ===================================================================== -->
+<h2 id="test">Test</h2>
+
+<p class="chapter-intro">Test end-to-end sul vero eseguibile, attraverso una PTY vera.</p>
+
+<h3 id="come-funzionano" data-index="pty.fork;e2e">Come funzionano</h3>
+<p>Ogni test è uno script Python 3 che usa solo la libreria standard: <code>pty.fork()</code> lancia
+<code>../mterm</code> dentro una PTY di dimensione nota, invia tasti come farebbe un utente e legge ciò che mterm scrive
+sul terminale, cercando byte precisi (sequenze di escape comprese). Ogni verifica stampa <code>OK</code> o
+<code>FALLITO</code>; lo stato di uscita è 1 se ce n'è almeno una fallita. L'ambiente è isolato:
+<code>XDG_RUNTIME_DIR</code> punta a una cartella di prova (<code>make e2e</code> usa
+<code>/tmp/mterm-test-xrt</code>), <code>SHELL=/bin/sh</code>, <code>TERM=xterm-256color</code>.</p>
+
+<h3 id="elenco-test" data-index="test end-to-end">I test</h3>
+<table id="test-list">
+  <thead><tr><th>File</th><th>Cosa verifica</th></tr></thead>
+  <tbody>
+    <tr><td><code>e2e.py</code></td><td>Ciclo base: <code>new</code>, comando nella sessione, distacco con <kbd>Ctrl-a d</kbd>, la sessione sopravvive, reattach con shell viva, uscita della shell che chiude la sessione.</td></tr>
+    <tr><td><code>e2e2.py</code></td><td>Le proprietà distintive: colore a 24 bit passato intatto, il programma vede <code>righe-1</code>, output dal vivo dopo il reattach, sfratto del primo client da parte del secondo.</td></tr>
+    <tr><td><code>e2e3.py</code></td><td>Finestre e sessione <em>Default</em>: <code>mterm</code> senza argomenti, <kbd>Ctrl-a c</kbd>, barra con due finestre, <kbd>Ctrl-a p</kbd>, overlay <kbd>Ctrl-a "</kbd>, <kbd>Ctrl-a k</kbd>, chiusura dell'ultima finestra.</td></tr>
+    <tr><td><code>e2e4.py</code></td><td>Regione di scorrimento: riaffermata sullo schermo normale dopo un reset (<code>ESC [r</code>), non toccata sullo schermo alternato, di nuovo riaffermata al ritorno.</td></tr>
+    <tr><td><code>e2e5.py</code></td><td>Buffer di replay: lo schermo torna al reattach senza ridisegno del programma, il contenuto di ogni finestra si conserva al cambio, il log esiste.</td></tr>
+    <tr><td><code>e2e6.py</code></td><td>Igiene dei modi: mouse spento passando a un'altra finestra, riacceso tornando (dallo stato tracciato), sequenza spezzata tra due letture riconosciuta, spegnimento al distacco.</td></tr>
+  </tbody>
+</table>
+<p>Non ci sono test unitari Go: ogni proprietà che conta riguarda il comportamento visto da un terminale, ed è
+verificata così.</p>
+
+<h3 id="controlli-doc" data-index="check-docs.py">Controlli della documentazione</h3>
+<p><code>tools/check-docs.py</code>, lanciato da <code>make test</code> e dalla CI, fallisce se:</p>
+<ul>
+  <li>una voce di <code>helpSections</code> non ha nel <a href="manuale-utente.html#riferimento">riferimento del manuale
+      utente</a> un <code>&lt;dt data-help="…"&gt;</code> con lo stesso identico testo, o viceversa;</li>
+  <li>un file <code>.go</code> manca dalla <a href="#mappa-file">mappa dei file</a>, o le righe indicate si scostano di
+      oltre il 10% da quelle vere;</li>
+  <li>un test di <code>tests/</code> manca dalla <a href="#elenco-test">tabella dei test</a>;</li>
+  <li><code>./mterm</code> manca, non è un ELF x86-64 o non contiene la versione di <code>help.go</code>;</li>
+  <li>la versione non coincide in <code>README.md</code>, <code>docs/index.html</code> e nei due manuali;</li>
+  <li>un link <code>#ancora</code> dei manuali punta a un id inesistente.</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2 id="convenzioni">Convenzioni</h2>
+<ul>
+  <li><strong>Italiano ovunque</strong>: messaggi, commenti, documentazione, messaggi di commit.</li>
+  <li><strong>Nessuna dipendenza</strong>: solo libreria standard; le chiamate di sistema si fanno con
+      <code>syscall</code>.</li>
+  <li><strong>Nessuna reinterpretazione dell'output</strong>: se una funzione nuova richiede di capire cosa c'è sullo
+      schermo, va ripensata. Leggere l'output per tracciare uno <em>stato</em> (come <code>scanModes</code>) è
+      ammesso; modificarlo no.</li>
+  <li><strong>Byte propri solo tra un burst e l'altro</strong>: niente scritture del client in mezzo a un flusso
+      dell'app.</li>
+  <li><strong>Ogni correzione di un difetto visibile ha il suo test end-to-end</strong>, che fallisce senza la
+      correzione.</li>
+  <li><code>gofmt</code> e <code>go vet</code> puliti; errori per l'utente con <code>fatal</code>, prefisso
+      <code>mterm:</code>, stato 1.</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2 id="limiti">Limiti noti e punti aperti</h2>
+
+<h3 id="limiti-noti" data-index="limiti noti;bug">Limiti noti</h3>
+<ul>
+  <li><strong>Finestre oltre la 9</strong>: <kbd>Ctrl-a</kbd> più una cifra e l'overlay accettano un solo carattere, e
+      gli id non si riusano; dalla finestra 10 in poi si arriva solo con <kbd>n</kbd>/<kbd>p</kbd>.</li>
+  <li><strong><code>new</code> senza terminale</strong>: il demone parte, poi <code>attach</code> fallisce su
+      <code>enterRaw</code> con stato 1; la sessione resta viva e staccata. Utile da script, ma il codice di uscita
+      inganna.</li>
+  <li><strong>Nomi riservati</strong>: una sessione chiamata come un comando (<code>ls</code>, <code>n</code>,
+      <code>help</code>…) non si raggiunge con <code>mterm NOME</code>.</li>
+  <li><strong>Titoli fissi</strong>: il titolo di una finestra è il nome del programma avviato, non segue i titoli
+      impostati dall'app.</li>
+  <li><strong>Replay dopo un ridimensionamento</strong>: i byte riprodotti erano stati scritti per la larghezza
+      vecchia; le TUI si riallineano al <code>SIGWINCH</code>, il testo della shell no.</li>
+  <li><strong>Memoria</strong>: fino a 5 MiB di buffer per finestra; la storia più vecchia non viene riprodotta.</li>
+  <li><strong>Permessi della cartella</strong>: <code>os.MkdirAll(dir, 0700)</code> non corregge i permessi se la
+      cartella esiste già; con il ripiego in <code>/tmp</code> un altro utente potrebbe averla creata prima.</li>
+  <li><strong>Architetture</strong>: le costanti ioctl di <code>pty_linux.go</code> valgono per amd64 e arm64 (e le
+      altre della famiglia generica), non per tutte.</li>
+  <li><strong>Log</strong>: ricominciato da capo a ogni sessione con lo stesso nome; il log di una sessione caduta va
+      letto prima di ricrearla.</li>
+</ul>
+
+<h3 id="idee" data-index="idee;TODO">Idee per il futuro</h3>
+<ul>
+  <li>Scelta delle finestre oltre la 9 nell'overlay (più cifre o frecce).</li>
+  <li>Rinominare sessioni e finestre; titoli dalle sequenze OSC dell'app.</li>
+  <li><code>mterm new -d</code> per creare una sessione staccata senza errore.</li>
+  <li>Controllo del proprietario e dei permessi della cartella dei socket.</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2 id="glossario" class="unnumbered">Glossario</h2>
+<dl class="defs">
+  <dt id="g-pty" data-kind="termine" data-index="PTY (termine)">PTY</dt>
+  <dd>Pseudo-terminale: coppia master/slave del kernel. Il programma usa lo slave come se fosse un terminale; chi tiene
+      il master legge ciò che scrive e gli manda l'input.</dd>
+  <dt id="g-raw" data-kind="termine" data-index="raw mode (termine)">Raw mode</dt>
+  <dd>Impostazione del terminale in cui ogni tasto arriva subito al programma, senza eco né elaborazione di riga.</dd>
+  <dt id="g-dec" data-kind="termine" data-index="modo DEC privato">Modo DEC privato</dt>
+  <dd>Impostazione del terminale attivata con <code>ESC [ ? n h</code> e spenta con <code>ESC [ ? n l</code>.</dd>
+  <dt id="g-alt" data-kind="termine" data-index="schermo alternato (termine)">Schermo alternato</dt>
+  <dd>Secondo schermo del terminale, senza scrollback, usato dai programmi a tutto schermo (modo 1049).</dd>
+  <dt id="g-decstbm" data-kind="termine" data-index="DECSTBM (termine)">Regione di scorrimento</dt>
+  <dd>Intervallo di righe entro cui il terminale fa scorrere il testo (<code>ESC [ alto ; basso r</code>).</dd>
+  <dt id="g-sync" data-kind="termine" data-index="Synchronized Update Mode">Synchronized Update Mode</dt>
+  <dd>Modo 2026: il terminale mostra tutto ciò che sta tra l'accensione e lo spegnimento in un colpo solo.</dd>
+  <dt id="g-sigwinch" data-kind="termine" data-index="SIGWINCH (termine)">SIGWINCH</dt>
+  <dd>Segnale che avvisa un programma che la dimensione del suo terminale è cambiata.</dd>
+  <dt id="g-bundle" data-kind="termine" data-index="git bundle">Git bundle</dt>
+  <dd>Un file che contiene un repository git completo, da cui si può clonare senza rete.</dd>
+</dl>
+
+<!-- ===================================================================== -->
+<h2 id="index" class="unnumbered">Indice analitico</h2>
+<div id="index-list"></div>
+
+<footer class="doc-footer">
+  mterm — Manuale tecnico, per la versione 1.0. Vedi anche il <a href="manuale-utente.html">manuale utente</a> e
+  <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md">decisioni e storia del progetto</a>.
+  <br>Copyright (c) 2026 nic-fio. Tutti i diritti riservati.
+</footer>
+
+</main>
+</div>
+<script src="assets/vendor/mermaid.min.js"></script>
+<script src="assets/docs.js"></script>
+</body>
+</html>
