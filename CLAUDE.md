@@ -49,11 +49,12 @@ Il perché di ciascuna è in [docs/decisioni-e-storia.md](docs/decisioni-e-stori
 
 ## Prima di registrare una modifica
 
-1. `make test`: ricostruisce `./mterm`, poi `go vet`, `gofmt`, i controlli dei
-   manuali (ogni comando e tasto della guida integrata deve avere la sua voce
-   `data-help` nel riferimento del manuale utente, ogni file `.go` e ogni test
-   devono comparire nel manuale tecnico, la versione deve coincidere ovunque) e
-   tutti i test end-to-end. **Fallisce se i manuali non sono aggiornati.**
+1. `make test`: prima i controlli dei manuali sull'eseguibile registrato (ogni
+   comando e tasto della guida integrata deve avere la sua voce `data-help` nel
+   riferimento del manuale utente, ogni file `.go` e ogni test devono comparire
+   nel manuale tecnico, la versione deve coincidere ovunque, anche dentro
+   `./mterm`), poi ricostruisce `./mterm`, `go vet`, `gofmt` e tutti i test
+   end-to-end. **Fallisce se i manuali non sono aggiornati.**
 2. Registra anche `./mterm`, che deve corrispondere al sorgente.
 3. Un difetto visibile corretto ha il suo test end-to-end in `tests/`, che
    fallisce senza la correzione.

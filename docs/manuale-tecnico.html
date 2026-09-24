@@ -120,7 +120,7 @@ mterm utile. Le motivazioni delle scelte di fondo sono in
   <thead><tr><th>Comando</th><th>Effetto</th></tr></thead>
   <tbody>
     <tr><td><code>make</code></td><td>Ricostruisce <code>./mterm</code> (statico, linux/amd64).</td></tr>
-    <tr><td><code>make test</code></td><td>Ricostruisce, poi <code>go vet</code>, <code>gofmt</code>, <code>tools/check-docs.py</code> e tutti i test end-to-end. Fallisce al primo errore.</td></tr>
+    <tr><td><code>make test</code></td><td>Prima <code>tools/check-docs.py</code> (sull'eseguibile registrato), poi ricostruisce e lancia <code>go vet</code>, <code>gofmt</code> e tutti i test end-to-end. Fallisce al primo errore.</td></tr>
     <tr><td><code>make e2e</code></td><td>Solo i test end-to-end, sull'eseguibile così com'è: non serve Go.</td></tr>
     <tr><td><code>make docs-check</code></td><td>Solo i controlli dei manuali.</td></tr>
     <tr><td><code>make dist</code></td><td><code>dist/mterm-linux-amd64</code>, <code>dist/mterm-linux-arm64</code> e <code>SHA256SUMS</code>.</td></tr>

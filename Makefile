@@ -1,7 +1,7 @@
 # mterm: build, test e controlli della documentazione.
 #
 #   make             ./mterm, il binario statico Linux x86-64 registrato nel repository
-#   make test        ricostruisce ./mterm, poi go vet, gofmt, controlli dei manuali, test end-to-end
+#   make test        controlli dei manuali (sull'eseguibile registrato), poi ricostruisce ./mterm, go vet, gofmt, test end-to-end
 #   make e2e         solo i test end-to-end, sull'eseguibile ./mterm così com'è (non serve Go)
 #   make docs-check  solo i controlli dei manuali
 #   make dist        binari statici per Linux amd64 e arm64 in dist/
@@ -48,7 +48,7 @@ e2e:
 	done
 	@echo "test end-to-end: tutti superati ($(words $(E2E)) file)"
 
-test: build vet fmt-check docs-check e2e
+test: docs-check build vet fmt-check e2e
 
 dist:
 	@mkdir -p dist
