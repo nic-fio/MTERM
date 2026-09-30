@@ -49,6 +49,7 @@ Il perché di ciascuna è in [docs/decisions-and-history.md](docs/decisions-and-
 | `tests/e2e*.py` | Sei test end-to-end in Python su una PTY reale. |
 | `docs/` | `User Manual.html`, `Technical Manual.html` (in inglese; nei link lo spazio si scrive `%20`), `index.html`, `decisions-and-history.md`, `assets/`. Pubblicati con GitHub Pages. |
 | `tools/` | `setup-dev.sh` (pacchetti e identità git), `backup.sh` (bundle git), `check-docs.py` (controlli dei manuali). |
+| `logos/` | `mterm-logo.png`, il logo (PNG 2172×724, sfondo bianco). Non è usato nei manuali. |
 | `mterm` | L'eseguibile Linux x86-64, **registrato**: va rigenerato con `make` e registrato insieme a ogni modifica del codice. |
 | `dist/` | Binari per le release, mai registrati. |
 
