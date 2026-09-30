@@ -61,7 +61,7 @@ code.</p>
 <p>Everyday use is in the <a href="User%20Manual.html">User Manual</a>. This one describes the inner workings:
 everything you need to fix a defect or add a feature without breaking the properties that make
 mterm useful. The reasons behind the fundamental choices are in
-<a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md">decisions and history</a>.</p>
+<a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisions-and-history.md">decisions and history</a>.</p>
 
 <h3 id="principi">Principles</h3>
 <div class="cards">
@@ -105,7 +105,7 @@ mterm useful. The reasons behind the fundamental choices are in
     <tr><td><code>*.go</code>, <code>go.mod</code></td><td>The program. No <code>go.sum</code>: there are no dependencies.</td></tr>
     <tr><td><code>mterm</code></td><td>The Linux x86-64 executable, <strong>committed to the repository</strong> so that a <code>git clone</code> is enough even without Go. It must be regenerated with <code>make</code> and committed together with every code change.</td></tr>
     <tr><td><code>tests/</code></td><td>Six end-to-end tests in Python 3 (see <a href="#test">Tests</a>).</td></tr>
-    <tr><td><code>docs/</code></td><td>These manuals, <code>index.html</code>, <code>decisioni-e-storia.md</code>, <code>assets/</code> (style, scripts, Mermaid). Published with GitHub Pages.</td></tr>
+    <tr><td><code>docs/</code></td><td>These manuals, <code>index.html</code>, <code>decisions-and-history.md</code>, <code>assets/</code> (style, scripts, Mermaid). Published with GitHub Pages.</td></tr>
     <tr><td><code>tools/</code></td><td><code>setup-dev.sh</code> (packages and git identity), <code>backup.sh</code> (git bundle), <code>check-docs.py</code> (manual checks).</td></tr>
     <tr><td><code>Makefile</code>, <code>build.sh</code></td><td>Build and test; <code>build.sh</code> is the alternative without <code>make</code>.</td></tr>
     <tr><td><code>.github/workflows/ci.yml</code></td><td>CI and releases.</td></tr>
@@ -542,7 +542,7 @@ verified that way.</p>
 
 <footer class="doc-footer">
   mterm — Technical Manual, for version 1.0. See also the <a href="User%20Manual.html">User Manual</a> and
-  <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md">the project's decisions and history</a>.
+  <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisions-and-history.md">the project's decisions and history</a>.
   <br>Copyright (c) 2026 nic-fio. All rights reserved.
 </footer>
 

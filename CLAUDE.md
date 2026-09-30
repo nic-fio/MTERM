@@ -11,7 +11,7 @@ dal repository.
   l'inglese: niente frasi di passaggio in inglese, nemmeno brevi. Anche
   codice, commenti, messaggi del programma, guida integrata (`help.go`),
   messaggi di commit e il resto della documentazione (`README.md`,
-  `docs/README.md`, `docs/decisioni-e-storia.md`, questo file) sono in
+  `docs/README.md`, `docs/decisions-and-history.md`, questo file) sono in
   italiano. **Unica eccezione: i due manuali HTML** (`docs/User Manual.html`,
   `docs/Technical Manual.html`) **sono in inglese**, decisione del
   proprietario; l'output del programma vi è citato così com'è, in italiano.
@@ -26,7 +26,7 @@ dal repository.
 
 ## Decisioni prese: non riaprirle
 
-Il perché di ciascuna è in [docs/decisioni-e-storia.md](docs/decisioni-e-storia.md).
+Il perché di ciascuna è in [docs/decisions-and-history.md](docs/decisions-and-history.md).
 
 | Decisione | |
 |---|---|
@@ -47,10 +47,16 @@ Il perché di ciascuna è in [docs/decisioni-e-storia.md](docs/decisioni-e-stori
 |---|---|
 | `*.go` | Il programma (`package main`): vedi la mappa dei file nel manuale tecnico. |
 | `tests/e2e*.py` | Sei test end-to-end in Python su una PTY reale. |
-| `docs/` | `User Manual.html`, `Technical Manual.html` (in inglese; nei link lo spazio si scrive `%20`), `index.html`, `decisioni-e-storia.md`, `assets/`. Pubblicati con GitHub Pages. |
+| `docs/` | `User Manual.html`, `Technical Manual.html` (in inglese; nei link lo spazio si scrive `%20`), `index.html`, `decisions-and-history.md`, `assets/`. Pubblicati con GitHub Pages. |
 | `tools/` | `setup-dev.sh` (pacchetti e identità git), `backup.sh` (bundle git), `check-docs.py` (controlli dei manuali). |
 | `mterm` | L'eseguibile Linux x86-64, **registrato**: va rigenerato con `make` e registrato insieme a ogni modifica del codice. |
 | `dist/` | Binari per le release, mai registrati. |
+
+Il repository segue la struttura standard comune ai sette progetti (AMS,
+EFI_PARTITION_MANAGER, HOSTER, MTERM, NESH, PHONESTRA, SCRAPER): il codice Go
+alla radice, `tests/`, `tools/`, `docs/` (con `index.html`, i due manuali, `README.md`,
+`decisions-and-history.md`, `.nojekyll`), `NOTICE.md`, la CI e gli obiettivi
+comuni di `make`: `all`, `test`, `docs-check`, `clean`.
 
 ## Prima di registrare una modifica
 
