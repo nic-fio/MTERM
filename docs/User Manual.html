@@ -134,7 +134,7 @@ $ cd MTERM
 $ ./mterm --help</pre>
 
 <h3 id="installare-path" data-index="make install;~/.local/bin;PATH">Using it from any folder</h3>
-<p>To simply type <code>mterm</code> from any folder, copy it into <code>~/.local/bin</code>:</p>
+<p>To simply type <code>mterm</code> from any folder, copy it into <code>~/.local/bin</code> (the reply means: installed in, followed by the path):</p>
 <pre class="terminal">$ make install
 installato in /home/nicfio/.local/bin/mterm</pre>
 <p>If you do not have <code>make</code>, you get the same result with <code>./build.sh install</code> (which however recompiles
@@ -186,7 +186,7 @@ session.</p>
 save. If the terminal is very short (fewer than 3 lines) the bar is not shown.</p>
 
 <h3 id="staccarsi" data-index="detaching;detach;Ctrl-a d">Detaching</h3>
-<p>Press <kbd>Ctrl</kbd>+<kbd>a</kbd>, release the keys, then press <kbd>d</kbd>. You are back at your previous terminal and this appears:</p>
+<p>Press <kbd>Ctrl</kbd>+<kbd>a</kbd>, release the keys, then press <kbd>d</kbd>. You are back at your previous terminal and this appears (detached):</p>
 <pre class="terminal">[staccato]</pre>
 <p>The programs inside the session keep running. You can now even close the terminal window, or
 log out of <code>ssh</code>.</p>
@@ -202,7 +202,7 @@ creating a new one. The screen is back as it was when you detached, and whatever
 meantime is there.</p>
 
 <h3 id="chiudere" data-index="closing a session;exit">Closing the session</h3>
-<p>A session ends when its last window closes. The simplest way is to exit the shell:</p>
+<p>A session ends when its last window closes. The simplest way is to exit the shell (the last line means session ended):</p>
 <pre class="terminal">$ exit
 [sessione terminata]</pre>
 <p>From outside, without going in, you close it with <code>mterm kill Default</code> (see <a href="#terminare">Ending a
@@ -217,7 +217,7 @@ work and one for a download.</p>
 <h3 id="creare" data-index="new;creating a session">Creating a named session</h3>
 <pre class="terminal">$ mterm new lavoro</pre>
 <p>Creates the session <strong>lavoro</strong> and enters it. <code>n</code> is the short form: <code>mterm n lavoro</code>.
-If a session with that name already exists, mterm leaves it alone and says so:</p>
+If a session with that name already exists, mterm leaves it alone and says so (the session «lavoro» already exists):</p>
 <pre class="terminal">$ mterm new lavoro
 mterm: la sessione «lavoro» esiste già</pre>
 <p>Without a name (<code>mterm new</code>) the session gets a number: <code>0</code>, then <code>1</code> and so on,
@@ -225,7 +225,7 @@ choosing the smallest free one.</p>
 
 <h3 id="nomi" data-index="session name">Valid names</h3>
 <p>The name can contain letters, digits and symbols, but <strong>no spaces and no slash <code>/</code></strong>. For
-compound words use a hyphen: <code>mterm new backup-foto</code>.</p>
+compound words use a hyphen: <code>mterm new backup-foto</code>. With a space the name is refused (invalid session name):</p>
 <pre class="terminal">$ mterm new "backup foto"
 mterm: nome di sessione non valido: «backup foto»</pre>
 
@@ -250,27 +250,27 @@ have a shell remain after the program ends, create the session normally and laun
 sessioni attive (2):
   Default
   lavoro</pre>
-<p>If there are none, it says <code>nessuna sessione attiva</code>. <code>mterm ls</code> also tidies up: if a
+<p>The first line (active sessions) gives how many there are. If there are none, it says <code>nessuna sessione attiva</code> (no active sessions). <code>mterm ls</code> also tidies up: if a
 session died abruptly (for example because its process was killed) and left some traces behind,
 it clears them away.</p>
 
 <h3 id="attach" data-index="attach;a">Reattaching to a specific session</h3>
 <pre class="terminal">$ mterm attach lavoro
 $ mterm a lavoro</pre>
-<p>Unlike the shortcut, <code>attach</code> never creates anything: if the session does not exist, it says so.</p>
+<p>Unlike the shortcut, <code>attach</code> never creates anything: if the session does not exist, it says so (no session «lavroo»: use «mterm ls»).</p>
 <pre class="terminal">$ mterm a lavroo
 mterm: nessuna sessione «lavroo» (usa «mterm ls»)</pre>
 
 <h3 id="altrove" data-index="session resumed elsewhere;eviction">One session, one terminal at a time</h3>
 <p>If you attach to a session already open in another terminal (for example you had left it open on the PC and now
-you come in from the tablet), the old terminal is detached and shows:</p>
+you come in from the tablet), the old terminal is detached and shows (detached: session resumed elsewhere):</p>
 <pre class="terminal">[staccato: sessione ripresa altrove]</pre>
 <p>Nothing is lost: the session has simply moved to the new terminal.</p>
 
 <h3 id="terminare" data-index="kill;k;ending">Ending a session</h3>
 <pre class="terminal">$ mterm kill lavoro
 sessione «lavoro» terminata</pre>
-<p><code>k</code> is the short form. All the programs in the session are closed <strong>immediately, without asking for
+<p>The reply means session «lavoro» ended. <code>k</code> is the short form. All the programs in the session are closed <strong>immediately, without asking for
 confirmation</strong>: any unsaved work inside them is lost.</p>
 
 <!-- ===================================================================== -->
@@ -304,7 +304,7 @@ closed.</p>
 
 <h3 id="elenco-finestre" data-index="Ctrl-a &quot;;window list">The window list</h3>
 <p><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>"</kbd> (double quotes: on an Italian keyboard <kbd>Shift</kbd>+<kbd>2</kbd>)
-shows the list, with the name of each window's program and an arrow on the current one:</p>
+shows the list, with the name of each window's program and an arrow on the current one (the heading means Windows — press the number, Esc to cancel):</p>
 <pre class="code" data-lang="text" data-title="Window list">
   Finestre  —  premi il numero, Esc per annullare
 
@@ -334,7 +334,7 @@ window. If it was the last one, the session ends.</p>
   </tbody>
 </table>
 <p>The name is made of: the session, <code>w</code> plus the window number, and the time of the save
-(hours-minutes-seconds). The bar confirms it for a few seconds:</p>
+(hours-minutes-seconds). The bar confirms it for a few seconds (salvato means saved):</p>
 <pre class="code" data-lang="text" data-title="Status bar"> ⬢ lavoro  0                         ✔ salvato: mterm-lavoro-w0-221405.{txt,raw} (1834/2410 B) </pre>
 <p>If the folder is not writable, the bar shows <code>✗ salvataggio fallito</code> (save failed) and the reason instead.</p>
 <div class="callout"><span class="callout-title">The text of full-screen programs</span>
@@ -379,7 +379,7 @@ sign that you are in this situation.</p>
 
 <h3 id="da-script" data-index="script;in the background">Starting a session from a script</h3>
 <p>If you run <code>mterm new NAME -- command</code> from a script or from a program that has no terminal, the session
-is created and the command starts, but mterm cannot display it and exits with an error:</p>
+is created and the command starts, but mterm cannot display it and exits with an error (incompatible terminal):</p>
 <pre class="terminal">$ mterm new notte -- ./backup.sh &lt;/dev/null
 mterm: terminale non compatibile: inappropriate ioctl for device</pre>
 <p>The session, however, is alive and working in the background: later you find it with <code>mterm ls</code> and enter it with
@@ -411,23 +411,23 @@ as plain text, without colours.</p>
 
 <h3 id="messaggi">Error messages</h3>
 <dl class="defs">
-  <dt id="p-nessuna" data-kind="voce" data-index="no session">mterm: nessuna sessione «NOME» (usa «mterm ls»)</dt>
-  <dd>“No session NAME”: you asked to reattach to a session that does not exist: wrong name, or it has already ended (its last
+  <dt id="p-nessuna" data-kind="voce" data-index="no session">mterm: nessuna sessione «NOME» (usa «mterm ls») (no session «NAME»: use «mterm ls»)</dt>
+  <dd>You asked to reattach to a session that does not exist: wrong name, or it has already ended (its last
       window closed, or the computer was restarted). Check with <code>mterm ls</code>. To create it, use
       <code>mterm NAME</code>.</dd>
-  <dt id="p-esiste" data-kind="voce" data-index="already exists">mterm: la sessione «NOME» esiste già</dt>
-  <dd>“The session NAME already exists”: <code>new</code> does not create a duplicate. To enter it: <code>mterm a NAME</code> or simply
+  <dt id="p-esiste" data-kind="voce" data-index="already exists">mterm: la sessione «NOME» esiste già (the session «NAME» already exists)</dt>
+  <dd>The command <code>new</code> does not create a duplicate. To enter it: <code>mterm a NAME</code> or simply
       <code>mterm NAME</code>.</dd>
-  <dt id="p-nome" data-kind="voce" data-index="invalid name">mterm: nome di sessione non valido</dt>
-  <dd>“Invalid session name”: the name contains a space, a tab or <code>/</code>. See <a href="#nomi">Valid names</a>.</dd>
-  <dt id="p-manca" data-kind="voce" data-index="missing name">mterm: manca il nome della sessione</dt>
-  <dd>“Session name missing”: <code>attach</code> and <code>kill</code> need the name: <code>mterm a lavoro</code>.</dd>
-  <dt id="p-terminale" data-kind="voce" data-index="incompatible terminal">mterm: terminale non compatibile</dt>
-  <dd>“Incompatible terminal”: mterm was launched without a terminal (from a script, from a service, with redirected input). If it was a
+  <dt id="p-nome" data-kind="voce" data-index="invalid name">mterm: nome di sessione non valido (invalid session name)</dt>
+  <dd>The name contains a space, a tab or <code>/</code>. See <a href="#nomi">Valid names</a>.</dd>
+  <dt id="p-manca" data-kind="voce" data-index="missing name">mterm: manca il nome della sessione (session name missing)</dt>
+  <dd>The commands <code>attach</code> and <code>kill</code> need the name: <code>mterm a lavoro</code>.</dd>
+  <dt id="p-terminale" data-kind="voce" data-index="incompatible terminal">mterm: terminale non compatibile (incompatible terminal)</dt>
+  <dd>mterm was launched without a terminal (from a script, from a service, with redirected input). If it was a
       <code>new</code>, the session was created anyway: see <a href="#da-script">Starting a session from a
       script</a>.</dd>
-  <dt id="p-avvio" data-kind="voce" data-index="start failed">mterm: avvio della sessione «NOME» fallito</dt>
-  <dd>“Starting session NAME failed”: the background part did not start within two seconds. The reason is written in the log file named in the
+  <dt id="p-avvio" data-kind="voce" data-index="start failed">mterm: avvio della sessione «NOME» fallito (starting session «NAME» failed)</dt>
+  <dd>The background part did not start within two seconds. The reason is written in the log file named in the
       message (see <a href="#log">A session's log</a>). Typical causes: the program after <code>--</code> does not
       exist or is not executable.</dd>
 </dl>
@@ -465,7 +465,7 @@ as plain text, without colours.</p>
 2026-09-24 10:57:36 demone avviato: sessione «lavoro», pid 484239
 2026-09-24 10:57:36 client attaccato
 2026-09-24 11:20:02 client staccato</pre>
-<p>The log remains even after the session ends, until you create another one with the same name (which starts it over
+<p>The lines mean daemon started (with the session and its process number), client attached, client detached. The log remains even after the session ends, until you create another one with the same name (which starts it over
 from scratch) or restart the computer.</p>
 
 <!-- ===================================================================== -->

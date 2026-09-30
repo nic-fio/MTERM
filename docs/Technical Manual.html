@@ -201,7 +201,7 @@ sequenceDiagram
 the ping, it behaves like <code>attach</code>. If it does not answer, the error points to the log.</p>
 <p>The daemon ends in <code>shutdown</code> (guarded by <code>sync.Once</code>): it kills the children, closes the listener,
 removes the socket, <code>os.Exit(0)</code>. It gets there when the last window closes, with the command
-<code>K</code>, or with <code>SIGTERM</code>/<code>SIGHUP</code>.</p>
+<code>K</code>, or with <code>SIGTERM</code>/<code>SIGHUP</code>. Seeing the socket close, the client prints [sessione terminata] (session ended).</p>
 
 <h3 id="percorsi" data-index="sockDir;sockPath;logPath;XDG_RUNTIME_DIR">Paths and names</h3>
 <p><code>sockDir</code> is <code>$XDG_RUNTIME_DIR/mterm</code>, or <code>/tmp/mterm-UID</code> if the variable is missing,
