@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mterm — User Manual</title>
+<meta name="description" content="User manual for mterm, the detachable terminal session manager: installation, sessions, windows, saving the screen, troubleshooting, command and key reference.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<div class="topbar">
+  <button class="btn menu-btn" type="button" aria-label="Open the table of contents">&#9776; Contents</button>
+  <strong>mterm — User Manual</strong>
+</div>
+<div class="layout">
+<nav class="sidebar" aria-label="Contents">
+  <div class="brand">
+    <div class="brand-logo">&#11042;</div>
+    <div class="brand-text"><strong>mterm — User Manual</strong><span>version 1.0</span></div>
+  </div>
+  <div class="search">
+    <input type="search" placeholder="Search  ( / )" aria-label="Search">
+    <div class="search-results" role="listbox"></div>
+  </div>
+  <div class="toc"></div>
+  <div class="side-tools">
+    <button class="btn print-btn" type="button">Print / PDF</button>
+    <a class="btn" href="Technical%20Manual.html">Technical Manual</a>
+  </div>
+</nav>
+
+<main>
+
+<header class="titlepage">
+  <div class="kicker">User Manual</div>
+  <h1>Using mterm</h1>
+  <p class="lead">How to install mterm, open a session, detach and reattach, work with several windows,
+  save what is on the screen and get by when something goes wrong. At the end you will find the complete reference of
+  every command and every key.</p>
+  <div class="meta">
+    <span><b>Version</b> 1.0</span>
+    <span><b>System</b> Linux (x86-64 and 64-bit ARM)</span>
+    <span><b>Dependencies</b> none</span>
+  </div>
+</header>
+
+<section class="unnumbered no-toc">
+  <h2 class="unnumbered" id="contents">Contents</h2>
+  <div class="toc-print" id="contents-list"></div>
+  <p>Press <kbd>/</kbd> to search. The <a href="#index">index</a> at the end lists commands, keys, files and
+  topics.</p>
+</section>
+
+<!-- ===================================================================== -->
+<h2 id="introduzione">Introduction</h2>
+
+<p class="chapter-intro">What mterm is, what it is for and why it exists, given that <code>screen</code> already does.</p>
+
+<h3 id="cos-e">What it is</h3>
+<p>mterm keeps the programs you launch in the terminal alive even when you close the terminal. You open a
+<em>session</em>, work inside it as in an ordinary terminal, then <em>detach</em> from it: the window
+closes but the programs keep running. Later, even from another window or from another computer connected
+through <code>ssh</code>, you <em>reattach</em> and find everything as it was, including what was written on the
+screen.</p>
+
+<p>It is especially useful in three cases:</p>
+<ul>
+  <li><strong>long jobs</strong>: a build, a download, an installation that you do not want to interrupt
+      by closing the window;</li>
+  <li><strong>dropped connections</strong>: if you work over <code>ssh</code> from the tablet and the network drops, the
+      programs on the remote computer do not die; you reconnect and carry on;</li>
+  <li><strong>modern full-screen programs</strong>, such as Claude Code, which look
+      wrong inside <code>screen</code> and look exactly the same inside mterm as outside it.</li>
+</ul>
+
+<div class="cards">
+  <div class="card"><div class="icon">1</div><h4>One command</h4>
+    <p>Type <code>mterm</code> and you are in. To leave with everything still running: <kbd>Ctrl</kbd>+<kbd>a</kbd> then
+    <kbd>d</kbd>.</p></div>
+  <div class="card"><div class="icon">&#8634;</div><h4>Pick up where you left off</h4>
+    <p>When you come back the screen is as it was, even if the program has written nothing in the meantime.</p></div>
+  <div class="card"><div class="icon">&#9638;</div><h4>Several windows</h4>
+    <p>Several shells in the same session, with a bar at the bottom that lists them and lets you pick one.</p></div>
+  <div class="card"><div class="icon">&#127912;</div><h4>True colour</h4>
+    <p>24-bit colour and modern programs pass through intact: mterm does not rewrite what they display.</p></div>
+  <div class="card"><div class="icon">&#8595;</div><h4>Save the screen</h4>
+    <p><kbd>Ctrl</kbd>+<kbd>a</kbd> then <kbd>s</kbd> saves to a file everything the window has shown.</p></div>
+  <div class="card"><div class="icon">?</div><h4>Built-in guide</h4>
+    <p><code>mterm --help</code> opens a tabbed guide in the terminal.</p></div>
+</div>
+
+<h3 id="perche-non-screen" data-index="screen;tmux;emulation">Why <code>screen</code> is not enough</h3>
+<p><code>screen</code> (and to some extent <code>tmux</code>) does not just pass along what the program writes: it
+<em>reads</em> it, builds its own internal copy of the screen and then <em>rewrites</em> it its own way to your terminal.
+Things get lost along the way: 24-bit colours become approximations, some modern sequences are dropped
+or altered, and the newest full-screen programs look messy or wrong.</p>
+<p>mterm does the opposite: <strong>it interprets nothing</strong>. What the program writes reaches your terminal
+byte for byte, unchanged. That is why a program inside mterm behaves as if mterm were not there. The only thing
+mterm adds of its own is the status bar on the last line.</p>
+
+<h3 id="cosa-non-fa">What it does not do</h3>
+<ul>
+  <li><strong>It does not split the screen</strong> into side-by-side panes like <code>tmux</code>: one window at a time,
+      full screen.</li>
+  <li><strong>It has no scroll-back mode</strong> inside the session: to reread past output
+      use your terminal's scrolling, or save it to a file with <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>s</kbd>.</li>
+  <li><strong>It does not survive shutting down</strong> the computer: the session lives as long as the computer stays on.</li>
+  <li><strong>One terminal at a time</strong> per session: if you attach from a second terminal, the first one
+      is detached.</li>
+</ul>
+
+<h3 id="come-funziona-in-breve" data-index="how it works">How it works, in brief</h3>
+<pre class="mermaid">
+flowchart LR
+  T["Your terminal"] &lt;--&gt;|"bytes untouched"| C["mterm&lt;br/&gt;(the part you see)"]
+  C &lt;--&gt;|"local connection"| D["mterm in the background&lt;br/&gt;(keeps the session alive)"]
+  D &lt;--&gt; S1["window 0&lt;br/&gt;shell or program"]
+  D &lt;--&gt; S2["window 1&lt;br/&gt;shell"]
+</pre>
+<p>When you open a session, mterm starts a second part of itself that stays in the background and keeps the programs running.
+The part you see in the terminal only acts as a pipe. Detaching closes the pipe; the background part stays. Reattaching
+opens a new pipe to the same background part.</p>
+
+<!-- ===================================================================== -->
+<h2 id="installazione">Installation</h2>
+
+<p class="chapter-intro">mterm is a single executable file: there are no libraries or other programs to install.</p>
+
+<h3 id="nel-repository" data-index="executable;git clone">The ready-made program, with git clone</h3>
+<p>The repository already contains the compiled program, the file <code>mterm</code> (Linux x86-64: PC and tablet). Just
+clone it:</p>
+<pre class="terminal">$ git clone https://github.com/nic-fio/MTERM.git
+$ cd MTERM
+$ ./mterm --help</pre>
+
+<h3 id="installare-path" data-index="make install;~/.local/bin;PATH">Using it from any folder</h3>
+<p>To simply type <code>mterm</code> from any folder, copy it into <code>~/.local/bin</code>:</p>
+<pre class="terminal">$ make install
+installato in /home/nicfio/.local/bin/mterm</pre>
+<p>If you do not have <code>make</code>, you get the same result with <code>./build.sh install</code> (which however recompiles
+and therefore needs Go) or by hand:</p>
+<pre class="terminal">$ mkdir -p ~/.local/bin && cp mterm ~/.local/bin/</pre>
+<p>On Debian and Ubuntu the folder <code>~/.local/bin</code> is already among those where the system looks for programs (if
+it is not found, log out of the computer session and log back in). The rest of the manual writes <code>mterm</code>: if you
+have not installed it, use <code>./mterm</code> from the repository folder.</p>
+
+<h3 id="programma-pronto" data-index="release;binary;arm64">Just the program, from the releases</h3>
+<p>From the <a href="https://github.com/nic-fio/MTERM/releases/latest">releases</a> page download
+<code>mterm-linux-amd64</code> (PC and x86-64 tablet) or <code>mterm-linux-arm64</code> (Raspberry Pi and other 64-bit
+ARM), then:</p>
+<pre class="terminal">$ mv ~/Scaricati/mterm-linux-amd64 ~/.local/bin/mterm
+$ chmod +x ~/.local/bin/mterm
+$ mterm --help</pre>
+
+<h3 id="dal-sorgente" data-index="compiling;Go">From the source code</h3>
+<p>You only need this if you want to modify mterm. On Debian or Ubuntu, the script <code>tools/setup-dev.sh</code> checks what
+is missing and installs it:</p>
+<pre class="terminal">$ git clone https://github.com/nic-fio/MTERM.git
+$ cd MTERM
+$ tools/setup-dev.sh --install
+$ make
+$ make test</pre>
+<p><code>make</code> rebuilds <code>./mterm</code> from the code; <code>make test</code> runs all the automatic
+checks. The details are in the <a href="Technical%20Manual.html#build">Technical Manual</a>.</p>
+
+<!-- ===================================================================== -->
+<h2 id="primi-passi">Getting started</h2>
+
+<p class="chapter-intro">Opening a session, leaving it to work on its own, finding it again, closing it.</p>
+
+<h3 id="prima-sessione" data-index="Default;default session">Opening your first session</h3>
+<pre class="terminal">$ mterm</pre>
+<p>The screen clears and the usual shell appears, with a green bar on the last line in addition. You are inside the default
+session, which is called <strong>Default</strong>. From here you work normally: everything you launch runs inside the
+session.</p>
+
+<h3 id="barra" data-index="status bar">The status bar</h3>
+<p>The bar at the bottom always tells you where you are:</p>
+<pre class="code" data-lang="text" data-title="Status bar"> ⬢ Default  0  1                                        nicfio@tablet  22:14:05 </pre>
+<ul>
+  <li><strong>⬢ Default</strong>: the name of the session;</li>
+  <li><strong>0 1</strong>: the window numbers; the one you are in is highlighted (inverted colours);</li>
+  <li>on the right <strong>user@computer</strong> and the <strong>time</strong>, updated every second.</li>
+</ul>
+<p>For a few seconds, in place of the user and time, the bar may show a message: for example the confirmation of a
+save. If the terminal is very short (fewer than 3 lines) the bar is not shown.</p>
+
+<h3 id="staccarsi" data-index="detaching;detach;Ctrl-a d">Detaching</h3>
+<p>Press <kbd>Ctrl</kbd>+<kbd>a</kbd>, release the keys, then press <kbd>d</kbd>. You are back at your previous terminal and this appears:</p>
+<pre class="terminal">[staccato]</pre>
+<p>The programs inside the session keep running. You can now even close the terminal window, or
+log out of <code>ssh</code>.</p>
+<div class="callout tip"><span class="callout-title">Even if you just close it</span>
+<p>You do not have to detach with <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>d</kbd>: if you close the terminal window,
+or if the connection drops, the session stays alive all the same. The command is there to free the terminal without
+closing it.</p></div>
+
+<h3 id="riattaccarsi" data-index="reattaching;attach">Reattaching</h3>
+<pre class="terminal">$ mterm</pre>
+<p>The same command as before: since the session <em>Default</em> already exists, mterm reattaches to it instead of
+creating a new one. The screen is back as it was when you detached, and whatever the programs wrote in the
+meantime is there.</p>
+
+<h3 id="chiudere" data-index="closing a session;exit">Closing the session</h3>
+<p>A session ends when its last window closes. The simplest way is to exit the shell:</p>
+<pre class="terminal">$ exit
+[sessione terminata]</pre>
+<p>From outside, without going in, you close it with <code>mterm kill Default</code> (see <a href="#terminare">Ending a
+session</a>).</p>
+
+<!-- ===================================================================== -->
+<h2 id="sessioni">Sessions</h2>
+
+<p class="chapter-intro">You can have several sessions at the same time, each with its own name: for example one for
+work and one for a download.</p>
+
+<h3 id="creare" data-index="new;creating a session">Creating a named session</h3>
+<pre class="terminal">$ mterm new lavoro</pre>
+<p>Creates the session <strong>lavoro</strong> and enters it. <code>n</code> is the short form: <code>mterm n lavoro</code>.
+If a session with that name already exists, mterm leaves it alone and says so:</p>
+<pre class="terminal">$ mterm new lavoro
+mterm: la sessione «lavoro» esiste già</pre>
+<p>Without a name (<code>mterm new</code>) the session gets a number: <code>0</code>, then <code>1</code> and so on,
+choosing the smallest free one.</p>
+
+<h3 id="nomi" data-index="session name">Valid names</h3>
+<p>The name can contain letters, digits and symbols, but <strong>no spaces and no slash <code>/</code></strong>. For
+compound words use a hyphen: <code>mterm new backup-foto</code>.</p>
+<pre class="terminal">$ mterm new "backup foto"
+mterm: nome di sessione non valido: «backup foto»</pre>
+
+<h3 id="scorciatoia" data-index="shortcut;mterm NAME">The shortcut: <code>mterm NAME</code></h3>
+<p>Typing just the name does the right thing by itself: if the session exists it reattaches to it, otherwise it creates it.</p>
+<pre class="terminal">$ mterm lavoro</pre>
+<p>It is the command you will use most often. <code>mterm</code> on its own is the same thing with the name <em>Default</em>.</p>
+<div class="callout warning"><span class="callout-title">Names that match a command</span>
+<p>A session named like an mterm command (<code>ls</code>, <code>new</code>, <code>n</code>,
+<code>attach</code>, <code>a</code>, <code>kill</code>, <code>k</code>, <code>list</code>, <code>help</code>) cannot be
+reached with the shortcut, because mterm runs the command. Avoid those names.</p></div>
+
+<h3 id="avviare-programma" data-index="--;command;claude">Starting a program directly</h3>
+<p>After <code>--</code> you can name the program to start instead of the shell:</p>
+<pre class="terminal">$ mterm new ai -- claude
+$ mterm n -- htop</pre>
+<p>The session contains only that program: when the program ends, the session ends with it. If you would rather
+have a shell remain after the program ends, create the session normally and launch the program from inside it.</p>
+
+<h3 id="elencare" data-index="ls;session list">Seeing which sessions are active</h3>
+<pre class="terminal">$ mterm ls
+sessioni attive (2):
+  Default
+  lavoro</pre>
+<p>If there are none, it says <code>nessuna sessione attiva</code>. <code>mterm ls</code> also tidies up: if a
+session died abruptly (for example because its process was killed) and left some traces behind,
+it clears them away.</p>
+
+<h3 id="attach" data-index="attach;a">Reattaching to a specific session</h3>
+<pre class="terminal">$ mterm attach lavoro
+$ mterm a lavoro</pre>
+<p>Unlike the shortcut, <code>attach</code> never creates anything: if the session does not exist, it says so.</p>
+<pre class="terminal">$ mterm a lavroo
+mterm: nessuna sessione «lavroo» (usa «mterm ls»)</pre>
+
+<h3 id="altrove" data-index="session resumed elsewhere;eviction">One session, one terminal at a time</h3>
+<p>If you attach to a session already open in another terminal (for example you had left it open on the PC and now
+you come in from the tablet), the old terminal is detached and shows:</p>
+<pre class="terminal">[staccato: sessione ripresa altrove]</pre>
+<p>Nothing is lost: the session has simply moved to the new terminal.</p>
+
+<h3 id="terminare" data-index="kill;k;ending">Ending a session</h3>
+<pre class="terminal">$ mterm kill lavoro
+sessione «lavoro» terminata</pre>
+<p><code>k</code> is the short form. All the programs in the session are closed <strong>immediately, without asking for
+confirmation</strong>: any unsaved work inside them is lost.</p>
+
+<!-- ===================================================================== -->
+<h2 id="finestre">Windows</h2>
+
+<p class="chapter-intro">A session can contain several shells, called windows, like the tabs of a browser. You see
+one at a time; the others keep working in the background.</p>
+
+<h3 id="prefisso" data-index="Ctrl-a;prefix">The <kbd>Ctrl</kbd>+<kbd>a</kbd> key</h3>
+<p>All commands inside a session are given in two steps: first <kbd>Ctrl</kbd>+<kbd>a</kbd> (hold down
+<kbd>Ctrl</kbd>, press <kbd>a</kbd>, release both), then a second key. For example
+<kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>c</kbd> means: <kbd>Ctrl</kbd>+<kbd>a</kbd>, then <kbd>c</kbd>.</p>
+<p>If after <kbd>Ctrl</kbd>+<kbd>a</kbd> you press a key that is not a command, mterm passes both keys to the program,
+as if it were not there.</p>
+
+<h3 id="nuova-finestra" data-index="Ctrl-a c;new window">Opening a new window</h3>
+<p><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>c</kbd> opens a new shell and takes you there. Its number appears in the bar.
+Windows are numbered starting from <code>0</code>; a number is not reused after its window has been
+closed.</p>
+
+<h3 id="cambiare-finestra" data-index="Ctrl-a n;Ctrl-a p;Ctrl-a space;Ctrl-a 0..9;switching windows">Switching between windows</h3>
+<table>
+  <thead><tr><th>Keys</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>n</kbd> or <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>space</kbd></td><td>Next window (after the last one, back to the first).</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>p</kbd></td><td>Previous window.</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>0</kbd> &hellip; <kbd>9</kbd></td><td>Straight to the window with that number (if it does not exist, nothing happens).</td></tr>
+  </tbody>
+</table>
+<p>When you go back to a window you find it as it was: whatever it wrote while you were not looking is there.</p>
+
+<h3 id="elenco-finestre" data-index="Ctrl-a &quot;;window list">The window list</h3>
+<p><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>"</kbd> (double quotes: on an Italian keyboard <kbd>Shift</kbd>+<kbd>2</kbd>)
+shows the list, with the name of each window's program and an arrow on the current one:</p>
+<pre class="code" data-lang="text" data-title="Window list">
+  Finestre  —  premi il numero, Esc per annullare
+
+ ►  0  bash
+    1  bash
+    2  htop</pre>
+<p>Press the number of the window you want, or <kbd>Esc</kbd> (or <kbd>q</kbd>) to go back where you were. While
+the list is open, other keys are ignored.</p>
+
+<h3 id="chiudere-finestra" data-index="Ctrl-a k;closing a window">Closing a window</h3>
+<p>Two ways: exit the shell with <code>exit</code>, or <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>k</kbd>, which closes the
+current window and the program it contains <strong>without asking for confirmation</strong>. You are taken to another
+window. If it was the last one, the session ends.</p>
+
+<!-- ===================================================================== -->
+<h2 id="salvare" data-index="Ctrl-a s;saving the screen">Saving the contents of a window</h2>
+
+<p class="chapter-intro">To keep, or reread at leisure, what a program has written.</p>
+
+<p><kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>s</kbd> saves everything the current window has shown (up to roughly the last
+5 MB) into <strong>two files</strong>, in the folder you launched <code>mterm</code> from:</p>
+<table>
+  <thead><tr><th>File</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td><code>mterm-lavoro-w0-221405.txt</code></td><td>Clean text, to open with any editor or search with <code>grep</code>.</td></tr>
+    <tr><td><code>mterm-lavoro-w0-221405.raw</code></td><td>The original bytes, colours included: <code>cat</code> of this file in the terminal shows it again identically.</td></tr>
+  </tbody>
+</table>
+<p>The name is made of: the session, <code>w</code> plus the window number, and the time of the save
+(hours-minutes-seconds). The bar confirms it for a few seconds:</p>
+<pre class="code" data-lang="text" data-title="Status bar"> ⬢ lavoro  0                         ✔ salvato: mterm-lavoro-w0-221405.{txt,raw} (1834/2410 B) </pre>
+<p>If the folder is not writable, the bar shows <code>✗ salvataggio fallito</code> (save failed) and the reason instead.</p>
+<div class="callout"><span class="callout-title">The text of full-screen programs</span>
+<p>For the output of a shell the <code>.txt</code> file is faithful. For programs that redraw the screen at
+different points (editors, <code>htop</code>, Claude Code) the <code>.txt</code> contains the pieces of text in the order in which they were
+written, not the final image of the screen: in that case the <code>.raw</code> file is the one that counts.</p></div>
+
+<!-- ===================================================================== -->
+<h2 id="uso-pratico">Practical use</h2>
+
+<p class="chapter-intro">The most common situations, step by step.</p>
+
+<h3 id="con-ssh" data-index="ssh;dropped connection">Working on another computer with ssh</h3>
+<ol class="steps">
+  <li>From the tablet you connect to the computer: <code>ssh server</code>.</li>
+  <li>On the server you open the session: <code>mterm lavoro</code>. mterm must be installed <strong>on the server</strong>.</li>
+  <li>You start the long job. If the network drops, or you close the tablet, it carries on on the server.</li>
+  <li>When you come back: <code>ssh server</code> and <code>mterm lavoro</code> again.</li>
+</ol>
+
+<h3 id="con-claude" data-index="Claude Code;full-screen programs">Claude Code and other full-screen programs</h3>
+<pre class="terminal">$ mterm new ai -- claude</pre>
+<p>Claude Code, <code>vim</code>, <code>htop</code>, <code>less</code> work as they do outside mterm: colours, cursor and
+keys are not touched. When you reattach, the program's screen reappears immediately, even if the program is
+idle, waiting, at that moment.</p>
+<p>If you reattach from a terminal of a different size, the program receives the new size immediately and usually
+redraws itself. Text already written by a shell, on the other hand, stays at the old width, as also happens in
+<code>screen</code> and <code>tmux</code>.</p>
+
+<h3 id="ctrl-a-nei-programmi" data-index="Ctrl-a Ctrl-a;start of line">When the program needs <kbd>Ctrl</kbd>+<kbd>a</kbd></h3>
+<p>Many programs use <kbd>Ctrl</kbd>+<kbd>a</kbd> for their own purposes: in the shell, for example, it moves the cursor to the
+start of the line. Inside mterm that key is reserved; to send it to the program press it <strong>twice</strong>:
+<kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>Ctrl</kbd>+<kbd>a</kbd>. For the start of the line in the shell you can also use the
+<kbd>Home</kbd> key (&#8598;).</p>
+
+<h3 id="annidate" data-index="mterm inside mterm;nesting">mterm inside mterm</h3>
+<p>If you open mterm inside an mterm session (this happens easily over <code>ssh</code>, with mterm both on the tablet and
+on the server), the <kbd>Ctrl</kbd>+<kbd>a</kbd> keys go to the <strong>outer</strong> one. To control the inner
+one press <kbd>Ctrl</kbd>+<kbd>a</kbd> twice and then the key: for example <kbd>Ctrl</kbd>+<kbd>a</kbd>
+<kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>d</kbd> detaches the inner session. Two status bars one above the other are the
+sign that you are in this situation.</p>
+
+<h3 id="da-script" data-index="script;in the background">Starting a session from a script</h3>
+<p>If you run <code>mterm new NAME -- command</code> from a script or from a program that has no terminal, the session
+is created and the command starts, but mterm cannot display it and exits with an error:</p>
+<pre class="terminal">$ mterm new notte -- ./backup.sh &lt;/dev/null
+mterm: terminale non compatibile: inappropriate ioctl for device</pre>
+<p>The session, however, is alive and working in the background: later you find it with <code>mterm ls</code> and enter it with
+<code>mterm a notte</code>. Bear in mind that the exit status is 1 all the same.</p>
+
+<!-- ===================================================================== -->
+<h2 id="guida-integrata" data-index="--help;tabbed guide">The built-in guide</h2>
+
+<p><code>mterm --help</code> (or <code>-h</code> or <code>help</code>) opens a tabbed guide in the terminal:
+<em>Info</em>, <em>Comandi</em> (commands), <em>Tasti</em> (keys), <em>Esempi</em> (examples).</p>
+<table>
+  <thead><tr><th>Keys</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd>, <kbd>Tab</kbd>, <kbd>h</kbd> <kbd>l</kbd>, <kbd>1</kbd>&hellip;<kbd>4</kbd></td><td>Switch tab.</td></tr>
+    <tr><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd>, <kbd>j</kbd> <kbd>k</kbd></td><td>Scroll by one line.</td></tr>
+    <tr><td><kbd>PgUp</kbd> <kbd>PgDn</kbd>, <kbd>space</kbd> <kbd>b</kbd></td><td>Scroll by one page.</td></tr>
+    <tr><td><kbd>g</kbd> <kbd>G</kbd></td><td>Start / end of the tab.</td></tr>
+    <tr><td><kbd>q</kbd>, <kbd>Esc</kbd></td><td>Quit.</td></tr>
+  </tbody>
+</table>
+<p>If the terminal is too small (fewer than 44 columns or 10 lines) the guide is shown as a page of text to
+scroll through; if the output goes to a file or to another program (<code>mterm --help &gt; guida.txt</code>) it is written
+as plain text, without colours.</p>
+
+<!-- ===================================================================== -->
+<h2 id="problemi">Troubleshooting</h2>
+
+<p class="chapter-intro">mterm's messages and what to do about them. Errors always begin with <code>mterm:</code>.</p>
+
+<h3 id="messaggi">Error messages</h3>
+<dl class="defs">
+  <dt id="p-nessuna" data-kind="voce" data-index="no session">mterm: nessuna sessione «NOME» (usa «mterm ls»)</dt>
+  <dd>“No session NAME”: you asked to reattach to a session that does not exist: wrong name, or it has already ended (its last
+      window closed, or the computer was restarted). Check with <code>mterm ls</code>. To create it, use
+      <code>mterm NAME</code>.</dd>
+  <dt id="p-esiste" data-kind="voce" data-index="already exists">mterm: la sessione «NOME» esiste già</dt>
+  <dd>“The session NAME already exists”: <code>new</code> does not create a duplicate. To enter it: <code>mterm a NAME</code> or simply
+      <code>mterm NAME</code>.</dd>
+  <dt id="p-nome" data-kind="voce" data-index="invalid name">mterm: nome di sessione non valido</dt>
+  <dd>“Invalid session name”: the name contains a space, a tab or <code>/</code>. See <a href="#nomi">Valid names</a>.</dd>
+  <dt id="p-manca" data-kind="voce" data-index="missing name">mterm: manca il nome della sessione</dt>
+  <dd>“Session name missing”: <code>attach</code> and <code>kill</code> need the name: <code>mterm a lavoro</code>.</dd>
+  <dt id="p-terminale" data-kind="voce" data-index="incompatible terminal">mterm: terminale non compatibile</dt>
+  <dd>“Incompatible terminal”: mterm was launched without a terminal (from a script, from a service, with redirected input). If it was a
+      <code>new</code>, the session was created anyway: see <a href="#da-script">Starting a session from a
+      script</a>.</dd>
+  <dt id="p-avvio" data-kind="voce" data-index="start failed">mterm: avvio della sessione «NOME» fallito</dt>
+  <dd>“Starting session NAME failed”: the background part did not start within two seconds. The reason is written in the log file named in the
+      message (see <a href="#log">A session's log</a>). Typical causes: the program after <code>--</code> does not
+      exist or is not executable.</dd>
+</dl>
+
+<h3 id="situazioni">Other situations</h3>
+<dl class="defs">
+  <dt id="p-sparita" data-kind="voce" data-index="session disappeared">The session has disappeared</dt>
+  <dd>A session ends when its last window closes (even one <code>exit</code> too many) or when the
+      computer restarts. If it is neither of these, look at its <a href="#log">log</a>.</dd>
+  <dt id="p-mouse" data-kind="voce" data-index="strange characters;mouse">Moving the mouse produces strange characters</dt>
+  <dd>A program turned on mouse handling and did not turn it off. mterm turns it off by itself when you switch windows and
+      when you detach; if it happens outside mterm, the command <code>reset</code> puts the terminal right.</dd>
+  <dt id="p-barra" data-kind="voce" data-index="garbled bar;bar covered">The bar has disappeared or is covered by text</dt>
+  <dd>This happens for a moment with programs that write to odd places on the screen; the bar redraws itself
+      as soon as the output stops, and in any case every second. If the terminal is fewer than 3 lines high, there is no bar by
+      design.</dd>
+  <dt id="p-scomposto" data-kind="voce" data-index="garbled screen;resizing">After coming back the screen is garbled</dt>
+  <dd>The terminal probably has a different size from when you detached. In full-screen programs
+      just wait a moment or press a key; in the shell, <kbd>Ctrl</kbd>+<kbd>l</kbd> clears the screen.</dd>
+  <dt id="p-scrollback" data-kind="voce" data-index="scrolling back;scrollback">I cannot reread past output</dt>
+  <dd>mterm has no scrolling of its own: use the terminal's (mouse wheel or <kbd>Shift</kbd>+<kbd>PgUp</kbd>),
+      which however contains only what passed before your eyes. For the whole output of a window use
+      <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>s</kbd> and open the <code>.txt</code> file.</dd>
+  <dt id="p-finestra10" data-kind="voce" data-index="window 10">I cannot reach window 10 with the numbers</dt>
+  <dd>The number keys only go up to <kbd>9</kbd>. For windows 10 and above use <kbd>Ctrl</kbd>+<kbd>a</kbd>
+      <kbd>n</kbd> / <kbd>p</kbd>.</dd>
+  <dt id="p-colori" data-kind="voce" data-index="colours;NO_COLOR">I want the guide without colours</dt>
+  <dd>Set the variable <code>NO_COLOR</code>: <code>NO_COLOR=1 mterm --help</code>.</dd>
+</dl>
+
+<h3 id="log" data-index="log;NAME.log">A session's log</h3>
+<p>Every session keeps a small diary of what happens to it: startup, attaches and detaches, errors. It is in
+<code>/run/user/<em>N</em>/mterm/NAME.log</code> (where <em>N</em> is your user number, usually 1000):</p>
+<pre class="terminal">$ cat /run/user/1000/mterm/lavoro.log
+2026-09-24 10:57:36 demone avviato: sessione «lavoro», pid 484239
+2026-09-24 10:57:36 client attaccato
+2026-09-24 11:20:02 client staccato</pre>
+<p>The log remains even after the session ends, until you create another one with the same name (which starts it over
+from scratch) or restart the computer.</p>
+
+<!-- ===================================================================== -->
+<h2 id="recupero">Recovery on a new device</h2>
+
+<p class="chapter-intro">If the tablet breaks down, all of mterm can be recovered from GitHub with one command.</p>
+
+<h3 id="cosa-c-e" data-index="backup;recovery">What is saved and where</h3>
+<p>The repository <a href="https://github.com/nic-fio/MTERM">github.com/nic-fio/MTERM</a> contains
+<strong>everything</strong>: the ready-made program, the code, the tests, these manuals, the tools and the entire history of
+changes. mterm has no personal files or passwords, so there is nothing to recreate by hand.</p>
+
+<h3 id="ripartire">Starting again from scratch</h3>
+<ol class="steps">
+  <li>Install git, if it is missing: <code>sudo apt install git</code>.</li>
+  <li>Clone the repository: <code>git clone https://github.com/nic-fio/MTERM.git</code></li>
+  <li>Go in and try the program: <code>cd MTERM &amp;&amp; ./mterm --help</code></li>
+  <li>Install it to use it anywhere: <code>make install</code> (or <code>cp mterm ~/.local/bin/</code>).</li>
+  <li>Optional, to modify it: <code>tools/setup-dev.sh --install</code> and then <code>make test</code>.</li>
+</ol>
+
+<h3 id="backup-locale" data-index="backup.sh;bundle">A backup that does not depend on GitHub</h3>
+<p><code>tools/backup.sh</code> puts the whole repository, with all its history, into a single file to keep on a
+USB stick or a disk:</p>
+<pre class="terminal">$ tools/backup.sh /media/chiavetta
+/media/chiavetta/mterm-2026-09-24.bundle: 2,4M, 4 commit, tag: v1.0.0</pre>
+<p>To start again from that file, without a network:</p>
+<pre class="terminal">$ git clone /media/chiavetta/mterm-2026-09-24.bundle MTERM
+$ cd MTERM && ./mterm --help</pre>
+
+<!-- ===================================================================== -->
+<h2 id="riferimento">Command and key reference</h2>
+
+<p class="chapter-intro">Everything mterm accepts, in the same order as the built-in guide.</p>
+
+<h3 id="ref-comandi">Commands</h3>
+<dl class="defs">
+  <dt id="cmd-new" data-kind="comando" data-index="new;n" data-help="new, n [nome] [-- cmd]">mterm new [name] [-- command &hellip;]</dt>
+  <dd>Creates a session and enters it. Short form: <code>n</code>. Without a name it uses the smallest free number. After
+      <code>--</code>, the program to start instead of the shell (<code>$SHELL</code>). See
+      <a href="#creare">Creating a session</a>.</dd>
+  <dt id="cmd-attach" data-kind="comando" data-index="attach;a" data-help="attach, a NOME">mterm attach NAME</dt>
+  <dd>Reattaches to the session. Short form: <code>a</code>. It never creates a session. If another terminal was
+      attached, it is detached.</dd>
+  <dt id="cmd-ls" data-kind="comando" data-index="ls;list" data-help="ls">mterm ls</dt>
+  <dd>Lists the active sessions in alphabetical order and removes the traces of dead ones. Also
+      <code>mterm list</code>.</dd>
+  <dt id="cmd-kill" data-kind="comando" data-index="kill;k" data-help="kill, k NOME">mterm kill NAME</dt>
+  <dd>Ends the session and all its programs immediately. Short form: <code>k</code>.</dd>
+  <dt id="cmd-nome" data-kind="comando" data-index="mterm NAME" data-help="NOME">mterm NAME</dt>
+  <dd>If the session exists it reattaches to it, otherwise it creates it. With no argument at all, <code>mterm</code> does the
+      same with the session <code>Default</code>.</dd>
+  <dt id="cmd-help" data-kind="comando" data-index="--help;-h;help" data-help="--help, -h">mterm --help</dt>
+  <dd>Opens the built-in guide. Also <code>-h</code>, <code>-help</code> and <code>help</code>. See
+      <a href="#guida-integrata">The built-in guide</a>.</dd>
+</dl>
+
+<h3 id="ref-tasti">Keys during a session</h3>
+<dl class="defs">
+  <dt id="key-d" data-kind="tasto" data-index="Ctrl-a d" data-help="Ctrl-a d">Ctrl-a d</dt>
+  <dd>Detaches the session: the terminal is free again, the programs keep running.</dd>
+  <dt id="key-c" data-kind="tasto" data-index="Ctrl-a c" data-help="Ctrl-a c">Ctrl-a c</dt>
+  <dd>New window with a new shell (always <code>$SHELL</code>, even if the session was started with another
+      program).</dd>
+  <dt id="key-n" data-kind="tasto" data-index="Ctrl-a n;Ctrl-a space" data-help="Ctrl-a n / Ctrl-a spazio">Ctrl-a n / Ctrl-a space</dt>
+  <dd>Next window.</dd>
+  <dt id="key-p" data-kind="tasto" data-index="Ctrl-a p" data-help="Ctrl-a p">Ctrl-a p</dt>
+  <dd>Previous window.</dd>
+  <dt id="key-num" data-kind="tasto" data-index="Ctrl-a 0..9" data-help="Ctrl-a 0..9">Ctrl-a 0 &hellip; 9</dt>
+  <dd>Goes to the window with that number, if it exists.</dd>
+  <dt id="key-list" data-kind="tasto" data-index="Ctrl-a &quot;" data-help="Ctrl-a &quot;">Ctrl-a "</dt>
+  <dd>Window list: a number to choose one, <kbd>Esc</kbd> or <kbd>q</kbd> to cancel.</dd>
+  <dt id="key-k" data-kind="tasto" data-index="Ctrl-a k" data-help="Ctrl-a k">Ctrl-a k</dt>
+  <dd>Closes the current window without confirmation. If it is the last one, it ends the session.</dd>
+  <dt id="key-s" data-kind="tasto" data-index="Ctrl-a s" data-help="Ctrl-a s">Ctrl-a s</dt>
+  <dd>Saves the contents of the window to <code>mterm-SESSION-wN-TIME.txt</code> and <code>.raw</code>, in the
+      folder you launched mterm from. See <a href="#salvare">Saving the contents</a>.</dd>
+  <dt id="key-aa" data-kind="tasto" data-index="Ctrl-a Ctrl-a" data-help="Ctrl-a Ctrl-a">Ctrl-a Ctrl-a</dt>
+  <dd>Sends a <kbd>Ctrl</kbd>+<kbd>a</kbd> to the program in the window.</dd>
+</dl>
+<p>The letters also work in upper case, except <kbd>n</kbd> and <kbd>p</kbd>. Any other key after
+<kbd>Ctrl</kbd>+<kbd>a</kbd> reaches the program together with the <kbd>Ctrl</kbd>+<kbd>a</kbd>.</p>
+
+<h3 id="file-usati" data-index="files used;XDG_RUNTIME_DIR">Files used</h3>
+<table>
+  <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td><code>$XDG_RUNTIME_DIR/mterm/NAME.sock</code></td><td>The session's point of contact (not a file to open). On Debian <code>$XDG_RUNTIME_DIR</code> is <code>/run/user/1000</code>.</td></tr>
+    <tr><td><code>$XDG_RUNTIME_DIR/mterm/NAME.log</code></td><td>The session's <a href="#log">log</a>.</td></tr>
+    <tr><td><code>/tmp/mterm-<em>N</em>/</code></td><td>Used instead of the previous one if <code>XDG_RUNTIME_DIR</code> is not set (for example in some unusual kinds of connection).</td></tr>
+    <tr><td><code>mterm-SESSION-wN-TIME.txt</code>, <code>.raw</code></td><td>Created by <kbd>Ctrl</kbd>+<kbd>a</kbd> <kbd>s</kbd> in the current folder.</td></tr>
+  </tbody>
+</table>
+<p>Everything lives in folders that the system empties at every restart: mterm leaves nothing lying around in your home folder.</p>
+
+<h3 id="ambiente" data-index="environment variables;SHELL;TERM;PAGER">Environment variables</h3>
+<table>
+  <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><code>SHELL</code></td><td>The shell started in new windows. If missing: <code>/bin/sh</code>.</td></tr>
+    <tr><td><code>TERM</code></td><td>Passed as it is to the programs in the session: mterm does not change it.</td></tr>
+    <tr><td><code>XDG_RUNTIME_DIR</code></td><td>Where the session files live (see above).</td></tr>
+    <tr><td><code>USER</code></td><td>The name shown in the status bar.</td></tr>
+    <tr><td><code>PAGER</code></td><td>The program for paging through the guide when the tabbed one cannot be used. If missing: <code>less</code>.</td></tr>
+    <tr><td><code>NO_COLOR</code></td><td>If set, the guide uses no colours.</td></tr>
+  </tbody>
+</table>
+<p>Sessions receive all the environment variables present when they were created, not those of the terminal from
+which you reattach.</p>
+
+<h3 id="stato-uscita" data-index="exit status">Exit status</h3>
+<table>
+  <thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>0</code></td><td>All good: also after a detach or the end of the session.</td></tr>
+    <tr><td><code>1</code></td><td>Error: the message, on the error stream, begins with <code>mterm:</code>.</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================================================================== -->
+<h2 id="glossario" class="unnumbered">Glossary</h2>
+<dl class="defs">
+  <dt id="g-sessione" data-kind="termine" data-index="session">Session</dt>
+  <dd>A named group of windows, which stays alive in the background even when no terminal is showing it.</dd>
+  <dt id="g-finestra" data-kind="termine" data-index="window">Window</dt>
+  <dd>A shell (or a program) inside a session. You see one at a time.</dd>
+  <dt id="g-staccare" data-kind="termine" data-index="detach (term)">Detach</dt>
+  <dd>Leaving the session without closing it: the programs carry on.</dd>
+  <dt id="g-riattaccare" data-kind="termine" data-index="reattach (term)">Reattach (attach)</dt>
+  <dd>Going back to seeing and using a session left in the background.</dd>
+  <dt id="g-shell" data-kind="termine" data-index="shell">Shell</dt>
+  <dd>The program that shows the prompt and runs the commands you type, usually <code>bash</code>.</dd>
+  <dt id="g-tuttoschermo" data-kind="termine" data-index="full-screen">Full-screen program</dt>
+  <dd>A program that takes up the whole terminal window and redraws it, such as an editor or Claude Code.</dd>
+  <dt id="g-truecolor" data-kind="termine" data-index="24-bit colour;truecolor">24-bit colour</dt>
+  <dd>Millions of exact colours, instead of the reduced palette of older terminals.</dd>
+  <dt id="g-release" data-kind="termine" data-index="release">Release</dt>
+  <dd>A published version of the program, with the ready-made file to download.</dd>
+</dl>
+
+<!-- ===================================================================== -->
+<h2 id="index" class="unnumbered">Index</h2>
+<div id="index-list"></div>
+
+<footer class="doc-footer">
+  mterm — User Manual, for version 1.0. See also the <a href="Technical%20Manual.html">Technical Manual</a> and
+  <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisioni-e-storia.md">the project's decisions and history</a>.
+  <br>Copyright (c) 2026 nic-fio. All rights reserved.
+</footer>
+
+</main>
+</div>
+<script src="assets/vendor/mermaid.min.js"></script>
+<script src="assets/docs.js"></script>
+</body>
+</html>

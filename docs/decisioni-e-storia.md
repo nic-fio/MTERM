@@ -1,8 +1,8 @@
 # mterm — decisioni e storia
 
 > Perché mterm è fatto così: il contesto, le decisioni e la storia del progetto.
-> Il funzionamento in dettaglio è nel [manuale tecnico](https://nic-fio.github.io/MTERM/manuale-tecnico.html),
-> l'uso nel [manuale utente](https://nic-fio.github.io/MTERM/manuale-utente.html).
+> Il funzionamento in dettaglio è nel [manuale tecnico](https://nic-fio.github.io/MTERM/Technical%20Manual.html),
+> l'uso nel [manuale utente](https://nic-fio.github.io/MTERM/User%20Manual.html).
 > Stato: **completo** (versione 1.0, luglio 2026).
 
 ---
@@ -136,7 +136,11 @@ appena installato. Linux è l'unico sistema di destinazione.
 ### 3.11 Italiano, test end-to-end
 
 Programma, messaggi, guida, commenti e documentazione sono in italiano, come
-per gli altri progetti dello stesso autore. I test sono end-to-end in Python
+per gli altri progetti dello stesso autore. Dal 30 settembre 2026 fanno
+eccezione i due manuali HTML, tradotti in inglese per decisione del proprietario
+(`docs/User Manual.html`, `docs/Technical Manual.html`): struttura, palette e
+stile sono rimasti identici, e l'output del programma vi è citato in italiano,
+così com'è. I test sono end-to-end in Python
 (solo libreria standard) su una PTY reale, perché le proprietà che contano sono
 quelle viste da un terminale.
 
@@ -177,3 +181,4 @@ versione): le date sono affidabili, l'attribuzione di ogni funzione a un giorno
 | 2 luglio 2026 | Buffer di replay e log del demone (`e2e5.py`); igiene dei modi DEC (`e2e6.py`); `Makefile`. |
 | 9 luglio 2026 | Salvataggio dello schermo `Ctrl-a s` (`.txt` e `.raw`), rendering a burst, rifinitura di README e guida. |
 | 24 settembre 2026 | Migrazione nel repository pubblico `nic-fio/MTERM`, manuali, CI, release v1.0.0. |
+| 30 settembre 2026 | Manuali tradotti in inglese e rinominati `manuale-utente.html` → `User Manual.html`, `manuale-tecnico.html` → `Technical Manual.html`; `check-docs.py` adattato. |

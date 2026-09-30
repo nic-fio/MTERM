@@ -34,13 +34,13 @@ tutto schermo dentro `mterm` funziona come funzionerebbe fuori.
 
 | Documento | Per |
 |---|---|
-| [Manuale utente](https://nic-fio.github.io/MTERM/manuale-utente.html) | Installare e usare mterm: sessioni, finestre, salvataggio, uso con ssh e Claude Code, problemi e soluzioni, tutti i comandi e i tasti. |
-| [Manuale tecnico](https://nic-fio.github.io/MTERM/manuale-tecnico.html) | Come è fatto dentro: client e demone, protocollo, buffer di replay, modi del terminale, barra di stato, PTY, test, limiti noti. |
+| [User Manual](https://nic-fio.github.io/MTERM/User%20Manual.html) | Manuale utente, in inglese. Installare e usare mterm: sessioni, finestre, salvataggio, uso con ssh e Claude Code, problemi e soluzioni, tutti i comandi e i tasti. |
+| [Technical Manual](https://nic-fio.github.io/MTERM/Technical%20Manual.html) | Manuale tecnico, in inglese. Come è fatto dentro: client e demone, protocollo, buffer di replay, modi del terminale, barra di stato, PTY, test, limiti noti. |
 | [Decisioni e storia](docs/decisioni-e-storia.md) | Perché mterm è fatto così. |
 
-I manuali sono pagine HTML, che GitHub mostra come codice sorgente: leggili
+I manuali sono pagine HTML in inglese, che GitHub mostra come codice sorgente: leggili
 online su **https://nic-fio.github.io/MTERM/**, oppure apri
-`docs/manuale-utente.html` nel browser da un clone (funzionano anche senza rete).
+`docs/User Manual.html` nel browser da un clone (funzionano anche senza rete).
 
 ## Installazione
 

@@ -4,26 +4,31 @@
 Fallisce se:
   - un comando o un tasto della guida integrata (helpSections in help.go) non
     ha la sua voce nel riferimento del manuale utente (attributo data-help
-    identico al testo della guida), o il manuale documenta una voce che non
-    esiste;
+    identico al testo della guida, che resta in italiano), o il manuale
+    documenta una voce che non esiste;
   - un file .go manca dalla mappa dei file del manuale tecnico, o il numero
     di righe indicato si scosta di più del 10% da quello vero;
   - un test di tests/ manca dall'elenco dei test del manuale tecnico;
   - l'eseguibile ./mterm (registrato nel repository) manca, non è un ELF
     x86-64 o non contiene la versione di help.go;
   - la versione di help.go non coincide con quella di README.md,
-    docs/index.html e dei due manuali;
-  - un link interno #ancora dei manuali punta a un id inesistente.
+    docs/index.html («Versione») e dei due manuali, che sono in inglese
+    («Version»);
+  - un link interno #ancora dei manuali, o un link da un manuale all'altro,
+    punta a un id inesistente;
+  - un manuale non è dichiarato in inglese (<html lang="en">);
+  - docs/index.html collega una pagina locale che non esiste.
 """
 import html
 import pathlib
 import re
 import sys
+import urllib.parse
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-USER = DOCS / "manuale-utente.html"
-TECH = DOCS / "manuale-tecnico.html"
+USER = DOCS / "User Manual.html"
+TECH = DOCS / "Technical Manual.html"
 
 errors = []
 
@@ -85,8 +90,8 @@ else:
     checks = {
         "README.md": rf"Versione {re.escape(version)}\b",
         "docs/index.html": rf"<b>Versione</b> {re.escape(version)}\b",
-        "docs/manuale-utente.html": rf"<b>Versione</b> {re.escape(version)}\b",
-        "docs/manuale-tecnico.html": rf"<b>Versione</b> {re.escape(version)}\b",
+        "docs/User Manual.html": rf"<b>Version</b> {re.escape(version)}\b",
+        "docs/Technical Manual.html": rf"<b>Version</b> {re.escape(version)}\b",
     }
     for rel, pat in checks.items():
         if not re.search(pat, (ROOT / rel).read_text()):
@@ -104,6 +109,11 @@ else:
     elif version and ("mterm " + version).encode() not in data:
         err(f"./mterm non contiene la versione {version}: rigeneralo con 'make'")
 
+# ---- lingua dei manuali ----
+for path, text in ((USER, user), (TECH, tech)):
+    if not re.search(r'<html lang="en">', text):
+        err(f"{path.name}: manca <html lang=\"en\"> (i manuali sono in inglese)")
+
 # ---- ancore interne ----
 for path, text in ((USER, user), (TECH, tech)):
     ids = set(re.findall(r'\bid="([^"]+)"', text))
@@ -112,9 +122,20 @@ for path, text in ((USER, user), (TECH, tech)):
             err(f"{path.name}: link a #{anchor}, che non esiste")
     other = TECH if path == USER else USER
     other_ids = set(re.findall(r'\bid="([^"]+)"', other.read_text()))
-    for anchor in sorted(set(re.findall(r'href="' + other.name + r'#([^"]+)"', text))):
+    # negli href lo spazio del nome del file è scritto %20
+    other_href = re.escape(urllib.parse.quote(other.name))
+    for anchor in sorted(set(re.findall(r'href="' + other_href + r'#([^"]+)"', text))):
         if anchor not in other_ids:
             err(f"{path.name}: link a {other.name}#{anchor}, che non esiste")
+    # un link al vecchio nome, o al nome con lo spazio non codificato, non funzionerebbe
+    for bad in sorted(set(re.findall(r'href="((?:manuale-utente|manuale-tecnico|User Manual|Technical Manual)\.html[^"]*)"', text))):
+        err(f"{path.name}: link a «{bad}», che non esiste (usa User%20Manual.html o Technical%20Manual.html)")
+
+# ---- link della pagina iniziale ----
+index_html = (DOCS / "index.html").read_text()
+for href in sorted(set(re.findall(r'href="([^":#]+\.html)(?:#[^"]*)?"', index_html))):
+    if not (DOCS / urllib.parse.unquote(href)).is_file():
+        err(f"docs/index.html: link a «{href}», che non esiste")
 
 if errors:
     print("controlli della documentazione: FALLITI")
