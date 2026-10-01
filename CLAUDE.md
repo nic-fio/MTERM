@@ -12,9 +12,9 @@ dal repository.
   codice, commenti, messaggi del programma, guida integrata (`help.go`),
   messaggi di commit e il resto della documentazione (`README.md`,
   `docs/README.md`, `docs/decisions-and-history.md`, questo file) sono in
-  italiano. **Unica eccezione: i due manuali HTML** (`docs/User Manual.html`,
-  `docs/Technical Manual.html`) **sono in inglese**, decisione del
-  proprietario; l'output del programma vi è citato così com'è, in italiano.
+  italiano. **Unica eccezione: i manuali e la pagina `docs/index.html` sono in
+  inglese** (`docs/User Manual.html`, `docs/Technical Manual.html`,
+  `docs/index.html`), decisione del proprietario; l'output del programma vi è citato così com'è, in italiano.
 - **Testi per l'utente senza gergo da programmatori**: guida integrata,
   messaggi e manuale utente sono scritti per chi usa il programma, non per chi
   lo ha scritto.
@@ -76,7 +76,7 @@ comuni di `make`: `all`, `test`, `docs-check`, `clean`.
    (indirizzo noreply di GitHub), che tiene fuori quello personale.
 
 Rilascio: aggiorna la versione in `help.go` (`"mterm 1.0"`), in `README.md`,
-`docs/index.html` e nei due manuali (`Version` in copertina e nel piè di pagina, sono in inglese), poi crea un tag annotato `vX.Y.Z` e fai
+`docs/index.html` e nei due manuali (`Version` in copertina e nel piè di pagina di tutti e tre, sono in inglese), poi crea un tag annotato `vX.Y.Z` e fai
 push del tag: la CI costruisce i binari Linux amd64/arm64 e pubblica la
 release, con il messaggio del tag come note.
 

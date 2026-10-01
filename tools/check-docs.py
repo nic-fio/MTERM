@@ -12,11 +12,11 @@ Fallisce se:
   - l'eseguibile ./mterm (registrato nel repository) manca, non è un ELF
     x86-64 o non contiene la versione di help.go;
   - la versione di help.go non coincide con quella di README.md,
-    docs/index.html («Versione») e dei due manuali, che sono in inglese
-    («Version» in copertina e nel piè di pagina);
+    docs/index.html e dei due manuali, tutti in inglese («Version» in
+    copertina e nel piè di pagina);
   - un link interno #ancora dei manuali, o un link da un manuale all'altro,
     punta a un id inesistente;
-  - un manuale non è dichiarato in inglese (<html lang="en">);
+  - un manuale o docs/index.html non è dichiarato in inglese (<html lang="en">);
   - docs/index.html collega una pagina locale che non esiste.
 """
 import html
@@ -89,15 +89,15 @@ if not version:
 else:
     checks = {
         "README.md": rf"Versione {re.escape(version)}\b",
-        "docs/index.html": rf"<span>Versione</span><b>{re.escape(version)}</b>",
-        # manuali: copertina e piè di pagina dello stile comune
+        # pagina iniziale e manuali: copertina e piè di pagina dello stile comune
+        "docs/index.html": rf"<span>Version</span><b>{re.escape(version)}</b>",
         "docs/User Manual.html": rf"<span>Version</span><b>{re.escape(version)}</b>",
         "docs/Technical Manual.html": rf"<span>Version</span><b>{re.escape(version)}</b>",
     }
     for rel, pat in checks.items():
         text = (ROOT / rel).read_text()
         ok = re.search(pat, text)
-        if rel.endswith("Manual.html"):
+        if rel.startswith("docs/"):
             ok = ok and re.search(r'<footer class="doc-foot">[^<]* · Version ' + re.escape(version) + r" · ", text)
         if not ok:
             err(f"{rel}: la versione non è {version} (come in help.go)")
@@ -114,10 +114,10 @@ else:
     elif version and ("mterm " + version).encode() not in data:
         err(f"./mterm non contiene la versione {version}: rigeneralo con 'make'")
 
-# ---- lingua dei manuali ----
-for path, text in ((USER, user), (TECH, tech)):
+# ---- lingua dei manuali e della pagina iniziale ----
+for path, text in ((USER, user), (TECH, tech), (DOCS / "index.html", (DOCS / "index.html").read_text())):
     if not re.search(r'<html lang="en">', text):
-        err(f"{path.name}: manca <html lang=\"en\"> (i manuali sono in inglese)")
+        err(f"{path.name}: manca <html lang=\"en\"> (manuali e pagina iniziale sono in inglese)")
 
 # ---- ancore interne ----
 for path, text in ((USER, user), (TECH, tech)):
