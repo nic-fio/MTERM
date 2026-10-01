@@ -13,7 +13,7 @@ Fallisce se:
     x86-64 o non contiene la versione di help.go;
   - la versione di help.go non coincide con quella di README.md,
     docs/index.html («Versione») e dei due manuali, che sono in inglese
-    («Version»);
+    («Version» in copertina e nel piè di pagina);
   - un link interno #ancora dei manuali, o un link da un manuale all'altro,
     punta a un id inesistente;
   - un manuale non è dichiarato in inglese (<html lang="en">);
@@ -89,12 +89,17 @@ if not version:
 else:
     checks = {
         "README.md": rf"Versione {re.escape(version)}\b",
-        "docs/index.html": rf"<b>Versione</b> {re.escape(version)}\b",
-        "docs/User Manual.html": rf"<b>Version</b> {re.escape(version)}\b",
-        "docs/Technical Manual.html": rf"<b>Version</b> {re.escape(version)}\b",
+        "docs/index.html": rf"<span>Versione</span><b>{re.escape(version)}</b>",
+        # manuali: copertina e piè di pagina dello stile comune
+        "docs/User Manual.html": rf"<span>Version</span><b>{re.escape(version)}</b>",
+        "docs/Technical Manual.html": rf"<span>Version</span><b>{re.escape(version)}</b>",
     }
     for rel, pat in checks.items():
-        if not re.search(pat, (ROOT / rel).read_text()):
+        text = (ROOT / rel).read_text()
+        ok = re.search(pat, text)
+        if rel.endswith("Manual.html"):
+            ok = ok and re.search(r'<footer class="doc-foot">[^<]* · Version ' + re.escape(version) + r" · ", text)
+        if not ok:
             err(f"{rel}: la versione non è {version} (come in help.go)")
 
 # ---- eseguibile registrato ----

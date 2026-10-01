@@ -1,137 +1,247 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mterm — Technical Manual</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>mterm — Technical Manual</title>
 <meta name="description" content="Technical manual for mterm: client and daemon architecture, protocol over the UNIX socket, replay buffer, tracked DEC modes, status bar, PTY, end-to-end tests, known limitations.">
-<link rel="stylesheet" href="assets/docs.css">
-</head>
+<style>
+/* Stile comune dei manuali dei 7 progetti (nic-fio). Uguale byte per byte in tutti i manuali: non modificare in un solo progetto. */
+/* Base: style.css di AMS */
+*{box-sizing:border-box} html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:#e9edf2;color:#111827;font-family:Outfit,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.62}
+.doc{max-width:1320px;margin:0 auto;background:#fff;box-shadow:0 1px 30px rgba(15,23,42,.10)}
+a{color:#0050C0;text-decoration:none}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:#eef2f7;padding:.08em .38em;border-radius:4px;color:#003a90}
+/* Cover */
+.cover{position:relative;padding:64px 56px;min-height:56vh;background:linear-gradient(135deg,#0050C0 0%,#003a90 100%);color:#fff;overflow:hidden}
+.cover-logo{margin-bottom:38px;position:relative;z-index:2}
+.cover-kicker{text-transform:uppercase;letter-spacing:.24em;font-size:12px;font-weight:700;color:#9dc0ff;margin-bottom:14px;position:relative;z-index:2}
+.cover-title{font-size:56px;line-height:1.02;margin:0 0 12px;font-weight:800;letter-spacing:-.02em;position:relative;z-index:2}
+.cover-sub{font-size:19px;color:#cfe0ff;max-width:32em;margin-bottom:44px;position:relative;z-index:2}
+.cover-meta{display:flex;gap:36px;position:relative;z-index:2}
+.cover-meta div{display:flex;flex-direction:column} .cover-meta span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#9dc0ff}
+.cover-meta b{font-size:16px;color:#fff}
+.cover-swoosh{position:absolute;right:-90px;bottom:-140px;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle,#3b82f655,transparent 70%);z-index:1}
+/* Layout */
+.with-side{display:flex;align-items:flex-start}
+.side{width:290px;flex:0 0 290px;background:#f8fafc;border-right:1px solid #e5e7eb;align-self:stretch}
+.side-inner{position:sticky;top:0;padding:32px 24px;max-height:100vh;overflow:auto}
+.main{flex:1;padding:48px 64px;min-width:0}
+/* TOC */
+.toc-head{font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:#003a90;margin:0 0 14px;font-weight:800}
+.toc-list{list-style:none;margin:0;padding:0}
+.toc-list a{display:flex;gap:9px;align-items:baseline;padding:4px 0;color:#334155}
+.toc-list a:hover{color:#0050C0}
+.toc-ch{font-weight:700;margin-top:6px} .toc-ch a{color:#0f172a}
+.toc-se a{font-size:13px;color:#64748b;padding-left:8px}
+.toc-n{flex:0 0 30px;color:#0050C0;font-weight:700;font-variant-numeric:tabular-nums}
+.toc-se .toc-n{flex-basis:36px;font-weight:600}
+/* Chapters */
+.chapter{margin-bottom:20px}
+.ch-head{border-bottom:3px solid #0050C0;padding-bottom:10px;margin:8px 0 22px}
+.ch-kick{text-transform:uppercase;letter-spacing:.16em;font-size:11.5px;font-weight:700;color:#0050C0}
+.h-ch{font-size:34px;font-weight:800;letter-spacing:-.02em;color:#003a90;margin:4px 0 0}
+.h-sec{font-size:21px;font-weight:700;color:#003a90;margin:30px 0 10px;padding-left:12px;border-left:4px solid #3b82f6}
+.main h4{font-size:16px;color:#0f172a;margin:20px 0 6px}
+.lead{font-size:17px;color:#334155}
+.main p{margin:10px 0} .ul,.ol{margin:10px 0;padding-left:22px} .ul li,.ol li{margin:4px 0}
+/* Figure/table */
+.fig{margin:20px 0;padding:18px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;text-align:center}
+.fig svg{max-width:100%;height:auto}
+.cap{font-size:12.5px;color:#64748b;margin-top:10px;text-align:center}
+.tbl-wrap{margin:18px 0} .tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;padding:10px 12px;background:#f1f5f9;color:#0f172a;font-weight:700;border-bottom:2px solid #0050C0}
+.tbl td{padding:9px 12px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+.tbl tr:nth-child(even) td{background:#f8fafc}
+/* callout */
+.callout{display:flex;gap:14px;align-items:flex-start;margin:18px 0;padding:14px 18px;border-radius:8px;font-size:14.5px}
+.callout-i{flex:0 0 26px;height:26px;border-radius:50%;color:#fff;font-weight:800;text-align:center;line-height:26px;font-style:italic}
+.c-info{background:#eff6ff;border-left:4px solid #0050C0} .c-info .callout-i{background:#0050C0}
+.c-warn{background:#fffbeb;border-left:4px solid #d97706} .c-warn .callout-i{background:#d97706;font-style:normal}
+.c-ok{background:#f0fdf4;border-left:4px solid #16a34a} .c-ok .callout-i{background:#16a34a;font-style:normal}
+/* code */
+.code{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.8px;line-height:1.55;overflow-x:auto;margin:14px 0}
+.code code{background:none;padding:0;border-radius:0;color:inherit;font-size:inherit}
+.code .k{color:#c084fc;font-weight:600} .code .cm{color:#64748b;font-style:italic} .code .st{color:#86efac}
+/* deflist */
+.deflist{margin:12px 0} .deflist dt{font-weight:700;color:#003a90;font-family:ui-monospace,Menlo,monospace;font-size:13.5px;margin-top:10px}
+.deflist dd{margin:2px 0 0;color:#334155;font-size:14px}
+.doc-foot{padding:20px 52px;border-top:1px solid #e5e7eb;color:#94a3b8;font-size:12px;text-align:center}
+/* print */
+@page{size:A4;margin:16mm 15mm 18mm;@bottom-center{content:counter(page)}}
+@media print{
+ body{background:#fff} .doc{box-shadow:none;max-width:none}
+ .with-side{display:block} .side{display:none} .main{padding:0}
+ .cover{min-height:auto;page-break-after:always}
+ .chapter{page-break-before:always} .sec,.fig,.tbl-wrap,.callout,.code{page-break-inside:avoid}
+ a{color:inherit}
+}
+
+/* Aggiunte comuni */
+/* Manuale utente: etichette dell'interfaccia e procedure */
+.ui{font-weight:600;color:#003a90;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:.02em .4em;font-size:.93em;white-space:nowrap}
+.steps{counter-reset:st;list-style:none;margin:14px 0;padding:0}
+.steps>li{counter-increment:st;position:relative;padding:8px 0 8px 44px;margin:0;border-left:2px solid #dbeafe;margin-left:15px}
+.steps>li:before{content:counter(st);position:absolute;left:-16px;top:6px;width:30px;height:30px;border-radius:50%;background:#0050C0;color:#fff;font-weight:800;text-align:center;line-height:30px;font-size:14px}
+.steps>li:last-child{border-left-color:transparent}
+
+/* tasti, etichette, codice */
+kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82em;background:#fff;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:5px;padding:.05em .4em;color:#0f172a;white-space:nowrap}
+.code .p{color:#64748b;user-select:none}
+.badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#fff;background:#16a34a;border-radius:4px;padding:1px 7px;margin-right:6px}
+.deflist .dt-t{font-family:Outfit,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px}
+.deflist dt[id]{scroll-margin-top:16px} .sec{scroll-margin-top:12px}
+/* ricerca nella barra laterale */
+.srch{margin:0 0 26px}
+.srch .toc-head{display:block}
+.srch-q{width:100%;font:inherit;font-size:14px;padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a;outline:none}
+.srch-q:focus{border-color:#0050C0;box-shadow:0 0 0 3px #dbeafe}
+.srch-info{font-size:12px;color:#64748b;margin:6px 2px 0;min-height:1em}
+.srch-res{list-style:none;margin:8px 0 0;padding:0}
+.srch-res li{margin:0}
+.srch-res a{display:block;padding:7px 9px;border-radius:7px;border-left:3px solid transparent;color:#334155}
+.srch-res a:hover,.srch-res a.on{background:#eff6ff;border-left-color:#0050C0}
+.srch-res .r-t{display:flex;gap:8px;font-weight:700;font-size:13px;color:#0f172a}
+.srch-res .r-t .toc-n{flex:0 0 auto}
+.srch-res .r-s{display:block;font-size:12px;color:#64748b;line-height:1.45;margin-top:2px}
+.srch-res mark,mark.hit{background:#fde68a;color:inherit;border-radius:2px;padding:0 1px}
+.toc-list.filtering li{opacity:.35} .toc-list.filtering li.toc-hit{opacity:1}
+.toc-list.filtering li.toc-hit a{color:#0050C0}
+.sec.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:#eff6ff}100%{background:transparent}}
+/* indice analitico */
+.idx{columns:2 300px;column-gap:40px;margin-top:18px}
+.idx-g{break-inside:avoid;margin:0 0 18px}
+.idx-l{font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:#003a90;font-weight:800;margin:0 0 6px;padding-bottom:4px;border-bottom:2px solid #0050C0}
+.idx-ul{list-style:none;margin:0;padding:0}
+.idx-ul li{margin:3px 0;font-size:14px;color:#334155;break-inside:avoid}
+.idx-t{font-weight:700;color:#0f172a}
+.idx-t code{font-weight:600}
+.idx-ul a{font-size:13px;white-space:nowrap}
+/* schermi stretti */
+@media (max-width:900px){
+ .with-side{display:block} .side{width:auto;border-right:0;border-bottom:1px solid #e5e7eb}
+ .side-inner{position:static;max-height:none;padding:24px 16px}
+ .main{padding:28px 16px}
+ .tbl-wrap{overflow-x:auto}
+}
+@media print{ .srch{display:none} mark.hit{background:none} .idx{columns:2} }
+
+/* ---- Stile comune dei manuali: copertina (variante 3) ---- */
+.cover.cover-w{background:#fff;color:#0b2a5b;border-bottom:4px solid #0050C0;padding:44px 56px 46px;min-height:auto}
+.cover-w .cover-logo{margin-bottom:30px}
+.cover-w .cover-logo img{height:76px;width:auto;display:block}
+.cover-w .cover-title{color:#003a90}
+.cover-w .cover-meta{margin-top:30px}
+.cover-w .cover-meta span{color:#5a6f93}
+.cover-w .cover-meta b{color:#0b2a5b}
+/* ---- Stile comune: pulsante Copy sui blocchi di comandi ---- */
+.code-w{position:relative;margin:14px 0}
+.code-w>.code{margin:0;padding-right:78px}
+.copy{position:absolute;top:9px;right:9px;font:600 11px/1 Outfit,-apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:.04em;color:#cbd5e1;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:5px 9px;cursor:pointer}
+.copy:after{content:attr(data-l)}
+.copy:hover,.copy:focus-visible{color:#fff;border-color:#64748b;outline:none}
+.copy.ok{color:#86efac;border-color:#16a34a}
+/* ---- Stile comune: schermi stretti ---- */
+@media (max-width:900px){
+ .cover.cover-w{padding:32px 16px 34px}
+ .cover-w .cover-logo{margin-bottom:22px}
+ .cover-w .cover-logo img{height:60px}
+ .cover-w .cover-title{font-size:42px}
+ .cover-w .cover-meta{margin-top:22px;gap:28px}
+ .doc-foot{padding:18px 16px}
+}
+@media print{ .copy{display:none} .code-w>.code{padding-right:18px} }
+</style></head>
 <body>
-<div class="topbar">
-  <button class="btn menu-btn" type="button" aria-label="Open the table of contents">&#9776; Contents</button>
-  <strong>mterm — Technical Manual</strong>
-</div>
-<div class="layout">
-<nav class="sidebar" aria-label="Contents">
-  <div class="brand">
-    <div class="brand-logo">{ }</div>
-    <div class="brand-text"><strong>mterm — Technical Manual</strong><span>version 1.0</span></div>
-  </div>
-  <div class="search">
-    <input type="search" placeholder="Search  ( / )" aria-label="Search">
-    <div class="search-results" role="listbox"></div>
-  </div>
-  <div class="toc"></div>
-  <div class="side-tools">
-    <button class="btn print-btn" type="button">Print / PDF</button>
-    <a class="btn" href="User%20Manual.html">User Manual</a>
-  </div>
-</nav>
+<div class="doc">
+  <section class="cover cover-w">
+    <div class="cover-logo"><img src="data:image/png;base64,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" alt="mterm"></div>
+    <h1 class="cover-title">Technical Manual</h1>
+    <div class="cover-meta">
+      <div><span>Version</span><b>1.0</b></div>
+      <div><span>Date</span><b>September 2026</b></div>
+    </div>
+  </section>
+  <div class="with-side">
+    <aside class="side"><div class="side-inner"><div class="srch" id="srch" hidden><label class="toc-head" for="srch-q">Search</label><input type="search" id="srch-q" class="srch-q" placeholder="A word, an option…  ( / )" autocomplete="off" spellcheck="false"><div class="srch-info" id="srch-info" aria-live="polite"></div><ol class="srch-res" id="srch-res"></ol></div><h2 class="toc-head">Contents</h2><ul class="toc-list" id="toc"><li class="toc-ch"><a href="#panoramica"><span class="toc-n">1</span><span class="toc-t">Overview</span></a></li><li class="toc-se"><a href="#cosa-copre"><span class="toc-n">1.1</span><span class="toc-t">What this manual covers</span></a></li><li class="toc-se"><a href="#principi"><span class="toc-n">1.2</span><span class="toc-t">Principles</span></a></li><li class="toc-se"><a href="#mappa-file"><span class="toc-n">1.3</span><span class="toc-t">File map</span></a></li><li class="toc-ch"><a href="#repository"><span class="toc-n">2</span><span class="toc-t">Repository and tools</span></a></li><li class="toc-se"><a href="#struttura"><span class="toc-n">2.1</span><span class="toc-t">Layout</span></a></li><li class="toc-se"><a href="#build"><span class="toc-n">2.2</span><span class="toc-t">Build</span></a></li><li class="toc-se"><a href="#ci-release"><span class="toc-n">2.3</span><span class="toc-t">CI and releases</span></a></li><li class="toc-se"><a href="#recupero-tecnico"><span class="toc-n">2.4</span><span class="toc-t">Recovery and backup</span></a></li><li class="toc-ch"><a href="#architettura"><span class="toc-n">3</span><span class="toc-t">Architecture</span></a></li><li class="toc-se"><a href="#processi"><span class="toc-n">3.1</span><span class="toc-t">The processes</span></a></li><li class="toc-se"><a href="#ciclo-vita"><span class="toc-n">3.2</span><span class="toc-t">Life cycle of a session</span></a></li><li class="toc-se"><a href="#percorsi"><span class="toc-n">3.3</span><span class="toc-t">Paths and names</span></a></li><li class="toc-ch"><a href="#protocollo"><span class="toc-n">4</span><span class="toc-t">The protocol</span></a></li><li class="toc-se"><a href="#modalita"><span class="toc-n">4.1</span><span class="toc-t">The first byte: the mode</span></a></li><li class="toc-se"><a href="#frame-client"><span class="toc-n">4.2</span><span class="toc-t">Frames from the client to the daemon</span></a></li><li class="toc-se"><a href="#frame-demone"><span class="toc-n">4.3</span><span class="toc-t">Frames from the daemon to the client</span></a></li><li class="toc-ch"><a href="#demone"><span class="toc-n">5</span><span class="toc-t">The daemon</span></a></li><li class="toc-se"><a href="#finestre"><span class="toc-n">5.1</span><span class="toc-t">Windows</span></a></li><li class="toc-se"><a href="#winreader"><span class="toc-n">5.2</span><span class="toc-t">Reading the windows</span></a></li><li class="toc-se"><a href="#replay"><span class="toc-n">5.3</span><span class="toc-t">Replay buffer</span></a></li><li class="toc-se"><a href="#modi"><span class="toc-n">5.4</span><span class="toc-t">Tracked DEC modes</span></a></li><li class="toc-se"><a href="#repaint"><span class="toc-n">5.5</span><span class="toc-t">Screen restore</span></a></li><li class="toc-se"><a href="#attach-demone"><span class="toc-n">5.6</span><span class="toc-t">Attach and sizes</span></a></li><li class="toc-se"><a href="#concorrenza"><span class="toc-n">5.7</span><span class="toc-t">Concurrency</span></a></li><li class="toc-se"><a href="#log-demone"><span class="toc-n">5.8</span><span class="toc-t">Log and signals</span></a></li><li class="toc-ch"><a href="#client"><span class="toc-n">6</span><span class="toc-t">The client</span></a></li><li class="toc-se"><a href="#avvio-client"><span class="toc-n">6.1</span><span class="toc-t">Startup</span></a></li><li class="toc-se"><a href="#cicli"><span class="toc-n">6.2</span><span class="toc-t">The three loops</span></a></li><li class="toc-se"><a href="#barra-tecnica"><span class="toc-n">6.3</span><span class="toc-t">Status bar and scrolling region</span></a></li><li class="toc-se"><a href="#overlay"><span class="toc-n">6.4</span><span class="toc-t">The window overlay</span></a></li><li class="toc-se"><a href="#cleanup"><span class="toc-n">6.5</span><span class="toc-t">Cleanup on detach</span></a></li><li class="toc-se"><a href="#salvataggio"><span class="toc-n">6.6</span><span class="toc-t">Saving and conversion to text</span></a></li><li class="toc-ch"><a href="#pty"><span class="toc-n">7</span><span class="toc-t">PTY and terminal</span></a></li><li class="toc-se"><a href="#openpty"><span class="toc-n">7.1</span><span class="toc-t">Opening a PTY</span></a></li><li class="toc-se"><a href="#startshell"><span class="toc-n">7.2</span><span class="toc-t">Starting the program</span></a></li><li class="toc-se"><a href="#winsize"><span class="toc-n">7.3</span><span class="toc-t">Sizes</span></a></li><li class="toc-ch"><a href="#guida"><span class="toc-n">8</span><span class="toc-t">Built-in guide</span></a></li><li class="toc-ch"><a href="#test"><span class="toc-n">9</span><span class="toc-t">Tests</span></a></li><li class="toc-se"><a href="#come-funzionano"><span class="toc-n">9.1</span><span class="toc-t">How they work</span></a></li><li class="toc-se"><a href="#elenco-test"><span class="toc-n">9.2</span><span class="toc-t">The tests</span></a></li><li class="toc-se"><a href="#controlli-doc"><span class="toc-n">9.3</span><span class="toc-t">Documentation checks</span></a></li><li class="toc-ch"><a href="#convenzioni"><span class="toc-n">10</span><span class="toc-t">Conventions</span></a></li><li class="toc-ch"><a href="#limiti"><span class="toc-n">11</span><span class="toc-t">Known limitations and open issues</span></a></li><li class="toc-se"><a href="#limiti-noti"><span class="toc-n">11.1</span><span class="toc-t">Known limitations</span></a></li><li class="toc-se"><a href="#idee"><span class="toc-n">11.2</span><span class="toc-t">Ideas for the future</span></a></li><li class="toc-ch"><a href="#glossario"><span class="toc-n">12</span><span class="toc-t">Glossary</span></a></li><li class="toc-ch"><a href="#index"><span class="toc-n">13</span><span class="toc-t">Index</span></a></li></ul></div></aside>
+    <main class="main"><section class="chapter" id="panoramica"><div class="ch-head"><span class="ch-kick">Chapter 1</span><h2 class="h-ch">Overview</h2></div>
 
-<main>
-
-<header class="titlepage">
-  <div class="kicker">Technical Manual</div>
-  <h1>Inside mterm</h1>
-  <p class="lead">How mterm is built: the two processes, the protocol over the socket, the replay buffer, the tracking of the
-  terminal modes, the status bar, PTY handling, the tests and the known limitations. For anyone who has to modify it or
-  understand why it behaves the way it does.</p>
-  <div class="meta">
-    <span><b>Version</b> 1.0</span>
-    <span><b>Language</b> Go 1.24, standard library only</span>
-    <span><b>System</b> Linux</span>
-  </div>
-</header>
-
-<section class="unnumbered no-toc">
-  <h2 class="unnumbered" id="contents">Contents</h2>
-  <div class="toc-print" id="contents-list"></div>
-  <p>Press <kbd>/</kbd> to search. The <a href="#index">index</a> at the end lists functions, files and
-  topics.</p>
-</section>
-
-<!-- ===================================================================== -->
-<h2 id="panoramica">Overview</h2>
-
-<p class="chapter-intro">What this manual covers, the principles mterm rests on and where everything is in the
+<p class="lead">What this manual covers, the principles mterm rests on and where everything is in the
 code.</p>
+<p>Press <kbd>/</kbd> to search. The <a href="#index">index</a> at the end lists functions, files and
+  topics.</p>
 
-<h3 id="cosa-copre">What this manual covers</h3>
+<section class="sec" id="cosa-copre"><h3 class="h-sec">1.1 · What this manual covers</h3>
 <p>Everyday use is in the <a href="User%20Manual.html">User Manual</a>. This one describes the inner workings:
 everything you need to fix a defect or add a feature without breaking the properties that make
 mterm useful. The reasons behind the fundamental choices are in
 <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisions-and-history.md">decisions and history</a>.</p>
+</section>
 
-<h3 id="principi">Principles</h3>
-<div class="cards">
-  <div class="card"><div class="icon">&#8646;</div><h4>No emulation</h4>
-    <p>The program's output reaches the real terminal byte for byte. mterm keeps no model of the screen and
-    does not rewrite sequences.</p></div>
-  <div class="card"><div class="icon">+</div><h4>Additions only in between</h4>
-    <p>The only bytes generated by mterm are the status bar, the window overlay, the restoring of modes and the
-    cleanup on window switch.</p></div>
-  <div class="card"><div class="icon">1</div><h4>One binary, zero dependencies</h4>
-    <p>Only Go's standard library, <code>CGO_ENABLED=0</code>: a static executable that runs on any
-    Linux of the same architecture.</p></div>
-  <div class="card"><div class="icon">&#10003;</div><h4>Verified live</h4>
-    <p>Every property is covered by an end-to-end test that drives the real executable through a real PTY.</p></div>
-</div>
+<section class="sec" id="principi"><h3 class="h-sec">1.2 · Principles</h3>
+<figure class="tbl-wrap"><table class="tbl"><thead><tr><th>Principle</th><th>In practice</th></tr></thead><tbody>
+<tr><td><b>No emulation</b></td><td>The program's output reaches the real terminal byte for byte. mterm keeps no model of the screen and does not rewrite sequences.</td></tr>
+<tr><td><b>Additions only in between</b></td><td>The only bytes generated by mterm are the status bar, the window overlay, the restoring of modes and the cleanup on window switch.</td></tr>
+<tr><td><b>One binary, zero dependencies</b></td><td>Only Go's standard library, <code>CGO_ENABLED=0</code>: a static executable that runs on any Linux of the same architecture.</td></tr>
+<tr><td><b>Verified live</b></td><td>Every property is covered by an end-to-end test that drives the real executable through a real PTY.</td></tr>
+</tbody></table><figcaption class="cap">Table 1.1 — The principles</figcaption></figure>
+</section>
 
-<h3 id="mappa-file" data-index="file map">File map</h3>
+<section class="sec" id="mappa-file" data-index="file map"><h3 class="h-sec">1.3 · File map</h3>
 <p>Everything is in <code>package main</code>. The files carry the constraint <code>//go:build linux</code>.</p>
-<table id="file-map">
+<figure class="tbl-wrap"><table class="tbl" id="file-map">
   <thead><tr><th>File</th><th>Lines</th><th>Contents</th></tr></thead>
-  <tbody>
-    <tr><td><code>main.go</code></td><td>261</td><td>Command dispatch, <code>cmdNew</code> (daemon startup), <code>cmdKill</code>, <code>cmdList</code>, socket and log paths, <code>isAlive</code>, <code>pickName</code>, <code>mustName</code>.</td></tr>
-    <tr><td><code>server.go</code></td><td>763</td><td>The daemon: windows and PTYs, window readers, replay buffer, tracked DEC modes, screen restore, parser for the frames from the client, log, shutdown.</td></tr>
-    <tr><td><code>client.go</code></td><td>792</td><td>The attach client: raw mode, read/output/input loops, <kbd>Ctrl-a</kbd> keys, status bar and scrolling region, overlay, cleanup on detach, saving the buffer and converting it to text.</td></tr>
-    <tr><td><code>pty_linux.go</code></td><td>47</td><td>Opening the PTY via <code>/dev/ptmx</code> and ioctl, <code>setWinsize</code>.</td></tr>
-    <tr><td><code>term_linux.go</code></td><td>70</td><td>Terminal size, raw mode and restore, signal lists.</td></tr>
-    <tr><td><code>help.go</code></td><td>256</td><td>Guide contents (<code>helpSections</code>, <code>helpExamples</code>, <code>descrizione</code>), man-style page, choice between TUI, pager and text.</td></tr>
-    <tr><td><code>tui.go</code></td><td>421</td><td>The interactive tabbed guide.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>main.go</code></td><td>261</td><td>Command dispatch, <code>cmdNew</code> (daemon startup), <code>cmdKill</code>, <code>cmdList</code>, socket and log paths, <code>isAlive</code>, <code>pickName</code>, <code>mustName</code>.</td></tr>
+<tr><td><code>server.go</code></td><td>763</td><td>The daemon: windows and PTYs, window readers, replay buffer, tracked DEC modes, screen restore, parser for the frames from the client, log, shutdown.</td></tr>
+<tr><td><code>client.go</code></td><td>792</td><td>The attach client: raw mode, read/output/input loops, <kbd>Ctrl-a</kbd> keys, status bar and scrolling region, overlay, cleanup on detach, saving the buffer and converting it to text.</td></tr>
+<tr><td><code>pty_linux.go</code></td><td>47</td><td>Opening the PTY via <code>/dev/ptmx</code> and ioctl, <code>setWinsize</code>.</td></tr>
+<tr><td><code>term_linux.go</code></td><td>70</td><td>Terminal size, raw mode and restore, signal lists.</td></tr>
+<tr><td><code>help.go</code></td><td>256</td><td>Guide contents (<code>helpSections</code>, <code>helpExamples</code>, <code>descrizione</code>), man-style page, choice between TUI, pager and text.</td></tr>
+<tr><td><code>tui.go</code></td><td>421</td><td>The interactive tabbed guide.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 1.2 — File map</figcaption></figure>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="repository">Repository and tools</h2>
+<section class="chapter" id="repository"><div class="ch-head"><span class="ch-kick">Chapter 2</span><h2 class="h-ch">Repository and tools</h2></div>
 
-<p class="chapter-intro">What is in the repository, how it is built, how it is released and how it is recovered.</p>
+<p class="lead">What is in the repository, how it is built, how it is released and how it is recovered.</p>
 
-<h3 id="struttura" data-index="repository layout">Layout</h3>
-<table>
+<section class="sec" id="struttura" data-index="repository layout"><h3 class="h-sec">2.1 · Layout</h3>
+<figure class="tbl-wrap"><table class="tbl">
   <thead><tr><th>Where</th><th>What</th></tr></thead>
-  <tbody>
-    <tr><td><code>*.go</code>, <code>go.mod</code></td><td>The program. No <code>go.sum</code>: there are no dependencies.</td></tr>
-    <tr><td><code>mterm</code></td><td>The Linux x86-64 executable, <strong>committed to the repository</strong> so that a <code>git clone</code> is enough even without Go. It must be regenerated with <code>make</code> and committed together with every code change.</td></tr>
-    <tr><td><code>tests/</code></td><td>Six end-to-end tests in Python 3 (see <a href="#test">Tests</a>).</td></tr>
-    <tr><td><code>docs/</code></td><td>These manuals, <code>index.html</code>, <code>decisions-and-history.md</code>, <code>assets/</code> (style, scripts, Mermaid). Published with GitHub Pages.</td></tr>
-    <tr><td><code>tools/</code></td><td><code>setup-dev.sh</code> (packages and git identity), <code>backup.sh</code> (git bundle), <code>check-docs.py</code> (manual checks).</td></tr>
-    <tr><td><code>Makefile</code>, <code>build.sh</code></td><td>Build and test; <code>build.sh</code> is the alternative without <code>make</code>.</td></tr>
-    <tr><td><code>.github/workflows/ci.yml</code></td><td>CI and releases.</td></tr>
-    <tr><td><code>CLAUDE.md</code></td><td>Working agreements and decisions not to be reopened.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>*.go</code>, <code>go.mod</code></td><td>The program. No <code>go.sum</code>: there are no dependencies.</td></tr>
+<tr><td><code>mterm</code></td><td>The Linux x86-64 executable, <strong>committed to the repository</strong> so that a <code>git clone</code> is enough even without Go. It must be regenerated with <code>make</code> and committed together with every code change.</td></tr>
+<tr><td><code>tests/</code></td><td>Six end-to-end tests in Python 3 (see <a href="#test">Tests</a>).</td></tr>
+<tr><td><code>docs/</code></td><td>These manuals, <code>index.html</code>, <code>decisions-and-history.md</code>, <code>assets/vendor/</code> (Mermaid, for the diagrams). Published with GitHub Pages.</td></tr>
+<tr><td><code>tools/</code></td><td><code>setup-dev.sh</code> (packages and git identity), <code>backup.sh</code> (git bundle), <code>check-docs.py</code> (manual checks).</td></tr>
+<tr><td><code>Makefile</code>, <code>build.sh</code></td><td>Build and test; <code>build.sh</code> is the alternative without <code>make</code>.</td></tr>
+<tr><td><code>.github/workflows/ci.yml</code></td><td>CI and releases.</td></tr>
+<tr><td><code>CLAUDE.md</code></td><td>Working agreements and decisions not to be reopened.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 2.1 — Repository layout</figcaption></figure>
+</section>
 
-<h3 id="build" data-index="make;build;build.sh">Build</h3>
+<section class="sec" id="build" data-index="make;build;build.sh"><h3 class="h-sec">2.2 · Build</h3>
 <p>The build is a single line, <code>CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o mterm .</code>, wrapped by the
 <code>Makefile</code>:</p>
-<table>
+<figure class="tbl-wrap"><table class="tbl">
   <thead><tr><th>Command</th><th>Effect</th></tr></thead>
-  <tbody>
-    <tr><td><code>make</code></td><td>Rebuilds <code>./mterm</code> (static, linux/amd64).</td></tr>
-    <tr><td><code>make test</code></td><td>First <code>tools/check-docs.py</code> (on the committed executable), then rebuilds and runs <code>go vet</code>, <code>gofmt</code> and all the end-to-end tests. Stops at the first error.</td></tr>
-    <tr><td><code>make e2e</code></td><td>Only the end-to-end tests, on the executable as it is: Go is not needed.</td></tr>
-    <tr><td><code>make docs-check</code></td><td>Only the manual checks.</td></tr>
-    <tr><td><code>make dist</code></td><td><code>dist/mterm-linux-amd64</code>, <code>dist/mterm-linux-arm64</code> and <code>SHA256SUMS</code>.</td></tr>
-    <tr><td><code>make install</code></td><td>Copies <code>./mterm</code> into <code>$(PREFIX)/bin</code>, normally <code>~/.local/bin</code>.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>make</code></td><td>Rebuilds <code>./mterm</code> (static, linux/amd64).</td></tr>
+<tr><td><code>make test</code></td><td>First <code>tools/check-docs.py</code> (on the committed executable), then rebuilds and runs <code>go vet</code>, <code>gofmt</code> and all the end-to-end tests. Stops at the first error.</td></tr>
+<tr><td><code>make e2e</code></td><td>Only the end-to-end tests, on the executable as it is: Go is not needed.</td></tr>
+<tr><td><code>make docs-check</code></td><td>Only the manual checks.</td></tr>
+<tr><td><code>make dist</code></td><td><code>dist/mterm-linux-amd64</code>, <code>dist/mterm-linux-arm64</code> and <code>SHA256SUMS</code>.</td></tr>
+<tr><td><code>make install</code></td><td>Copies <code>./mterm</code> into <code>$(PREFIX)/bin</code>, normally <code>~/.local/bin</code>.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 2.2 — The make targets</figcaption></figure>
 <p>The <code>Makefile</code> uses the <code>go</code> found in <code>PATH</code> or, failing that, <code>~/.local/go/bin/go</code>.
 <code>go.mod</code> requires Go 1.24, the version of Debian 13's <code>golang-go</code> package: on the tablet
 <code>apt</code> is enough.</p>
+</section>
 
-<h3 id="ci-release" data-index="CI;release;tag">CI and releases</h3>
+<section class="sec" id="ci-release" data-index="CI;release;tag"><h3 class="h-sec">2.3 · CI and releases</h3>
 <p>On every push to <code>main</code> and every pull request GitHub Actions runs <code>make test</code> and
 <code>make dist</code> on Ubuntu 24.04 (<code>check-docs.py</code>, inside <code>make test</code>, checks that
 the committed executable exists and carries the right version). On a <code>v*</code> tag it also publishes a release with the two binaries and the SHA-256 checksums; the notes
@@ -143,29 +253,31 @@ are the message of the annotated tag. To release:</p>
   <li><code>git tag -a v1.1.0 -m "mterm 1.1.0: …what's new…"</code></li>
   <li><code>git push origin main v1.1.0</code></li>
 </ol>
+</section>
 
-<h3 id="recupero-tecnico" data-index="recovery;bundle">Recovery and backup</h3>
+<section class="sec" id="recupero-tecnico" data-index="recovery;bundle"><h3 class="h-sec">2.4 · Recovery and backup</h3>
 <p>The repository is designed so that a <code>git clone</code> is enough to get everything back: mterm has no personal files, and
 the ready-made executable is committed. <code>tools/setup-dev.sh</code> recreates the only thing a clone does not bring, the local git
 identity (GitHub <em>noreply</em> address, to keep the personal one out of the public history), and lists the
 missing packages. <code>tools/backup.sh DIR</code> writes a verified <code>git bundle --all</code>, which can be cloned
 without a network.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="architettura">Architecture</h2>
+<section class="chapter" id="architettura"><div class="ch-head"><span class="ch-kick">Chapter 3</span><h2 class="h-ch">Architecture</h2></div>
 
-<p class="chapter-intro">Two roles in the same executable, connected by a UNIX socket.</p>
+<p class="lead">Two roles in the same executable, connected by a UNIX socket.</p>
 
-<h3 id="processi" data-index="daemon;client;__daemon">The processes</h3>
-<pre class="mermaid">
+<section class="sec" id="processi" data-index="daemon;client;__daemon"><h3 class="h-sec">3.1 · The processes</h3>
+<figure class="fig"><pre class="mermaid">
 flowchart LR
   TERM["real terminal"] &lt;--&gt;|"stdin / stdout&lt;br/&gt;raw mode"| CLI["client&lt;br/&gt;mterm attach"]
   CLI &lt;--&gt;|"UNIX socket&lt;br/&gt;NAME.sock"| DAE["daemon&lt;br/&gt;mterm __daemon NAME"]
   DAE &lt;--&gt;|"PTY master"| P0["window 0&lt;br/&gt;$SHELL or command"]
   DAE &lt;--&gt;|"PTY master"| P1["window 1&lt;br/&gt;$SHELL"]
   DAE -.->|"log"| LOG[("NAME.log")]
-</pre>
-<ul>
+</pre><figcaption class="cap">Figure 3.1 — The processes of a session</figcaption></figure>
+<ul class="ul">
   <li><strong>Daemon</strong> (<code>runServer</code>): one per session. It is the same executable launched as
       <code>mterm __daemon NAME [command…]</code>, a hidden subcommand. It owns the PTYs, the child processes, the replay
       buffers, and listens on the socket. It has no terminal: stdin/stdout/stderr on <code>/dev/null</code>, new POSIX
@@ -174,9 +286,10 @@ flowchart LR
       as a pipe. There is at most one connected per session.</li>
   <li><strong>Short commands</strong> (<code>ls</code>, <code>kill</code>): they open the socket, ask one question, close.</li>
 </ul>
+</section>
 
-<h3 id="ciclo-vita" data-index="cmdNew;life cycle">Life cycle of a session</h3>
-<pre class="mermaid">
+<section class="sec" id="ciclo-vita" data-index="cmdNew;life cycle"><h3 class="h-sec">3.2 · Life cycle of a session</h3>
+<figure class="fig"><pre class="mermaid">
 sequenceDiagram
   participant U as mterm new NAME
   participant D as daemon
@@ -195,15 +308,16 @@ sequenceDiagram
   S--xD: the shell exits (EOF on the master)
   D->>D: closeWindow, last one: shutdown
   D--xU: socket closed: [sessione terminata]
-</pre>
+</pre><figcaption class="cap">Figure 3.2 — Life cycle of a session</figcaption></figure>
 <p><code>cmdNew</code> refuses a name that is already alive, launches the daemon with <code>exec.Command(os.Executable(), "__daemon",
 …)</code>, releases the process and polls the socket every 10 ms, at most 200 times. As soon as the daemon answers
 the ping, it behaves like <code>attach</code>. If it does not answer, the error points to the log.</p>
 <p>The daemon ends in <code>shutdown</code> (guarded by <code>sync.Once</code>): it kills the children, closes the listener,
 removes the socket, <code>os.Exit(0)</code>. It gets there when the last window closes, with the command
 <code>K</code>, or with <code>SIGTERM</code>/<code>SIGHUP</code>. Seeing the socket close, the client prints [sessione terminata] (session ended).</p>
+</section>
 
-<h3 id="percorsi" data-index="sockDir;sockPath;logPath;XDG_RUNTIME_DIR">Paths and names</h3>
+<section class="sec" id="percorsi" data-index="sockDir;sockPath;logPath;XDG_RUNTIME_DIR"><h3 class="h-sec">3.3 · Paths and names</h3>
 <p><code>sockDir</code> is <code>$XDG_RUNTIME_DIR/mterm</code>, or <code>/tmp/mterm-UID</code> if the variable is missing,
 created with permissions <code>0700</code>. Inside: <code>NAME.sock</code> and <code>NAME.log</code>. Protection between users
 lies entirely in the folder permissions: the socket has no authentication.</p>
@@ -211,57 +325,59 @@ lies entirely in the folder permissions: the socket has no authentication.</p>
 <code>o</code>. It does not disturb an attached client. <code>cmdList</code> uses it on every <code>*.sock</code> and removes
 those that do not answer. <code>pickName</code> picks the smallest integer not used by a <code>.sock</code>.
 <code>mustName</code> rejects names that are empty or contain <code>/</code>, a space or a tab.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="protocollo">The protocol</h2>
+<section class="chapter" id="protocollo"><div class="ch-head"><span class="ch-kick">Chapter 4</span><h2 class="h-ch">The protocol</h2></div>
 
-<p class="chapter-intro">A minimal, asymmetric binary protocol over the UNIX socket.</p>
+<p class="lead">A minimal, asymmetric binary protocol over the UNIX socket.</p>
 
-<h3 id="modalita" data-index="P;K;A;mode">The first byte: the mode</h3>
-<table>
+<section class="sec" id="modalita" data-index="P;K;A;mode"><h3 class="h-sec">4.1 · The first byte: the mode</h3>
+<figure class="tbl-wrap"><table class="tbl">
   <thead><tr><th>Byte</th><th>Meaning</th><th>Reply</th></tr></thead>
-  <tbody>
-    <tr><td><code>P</code></td><td>Ping, used by <code>isAlive</code>.</td><td><code>o</code>, then close.</td></tr>
-    <tr><td><code>K</code></td><td>Kill: ends the session.</td><td><code>o</code>, then <code>shutdown</code>.</td></tr>
-    <tr><td><code>A</code></td><td>Attach: from here on, frames in both directions.</td><td>Daemon frames.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>P</code></td><td>Ping, used by <code>isAlive</code>.</td><td><code>o</code>, then close.</td></tr>
+<tr><td><code>K</code></td><td>Kill: ends the session.</td><td><code>o</code>, then <code>shutdown</code>.</td></tr>
+<tr><td><code>A</code></td><td>Attach: from here on, frames in both directions.</td><td>Daemon frames.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 4.1 — The first byte of a connection</figcaption></figure>
+</section>
 
-<h3 id="frame-client" data-index="parser;client frames">Frames from the client to the daemon</h3>
-<pre class="code" data-lang="text" data-title="client → daemon">
-'S' + rows(uint16 BE) + columns(uint16 BE)    size (rows already reduced by 1 for the bar)
+<section class="sec" id="frame-client" data-index="parser;client frames"><h3 class="h-sec">4.2 · Frames from the client to the daemon</h3>
+<pre class="code"><code>'S' + rows(uint16 BE) + columns(uint16 BE)    size (rows already reduced by 1 for the bar)
 'D' + length(uint16 BE) + data                input for the current window (max 65535 per frame)
 'C'                                           create a window
 'n' / 'p'                                     next / previous window
 'g' + id(uint16 BE)                           go to the window with that id
 'x'                                           close the current window
-'b'                                           request the replay buffer (reply: frame 'B')
-</pre>
+'b'                                           request the replay buffer (reply: frame 'B')</code></pre>
 <p>The daemon reads them with <code>parser.feed</code>, a state machine (<code>stType</code>, <code>stSize</code>,
 <code>stDlen</code>, <code>stData</code>, <code>stGoto</code>) that copes with frames split across several reads. The data of a
 <code>D</code> frame is written to the PTY master piece by piece, as it arrives. Bytes of unknown type
 are ignored.</p>
+</section>
 
-<h3 id="frame-demone" data-index="push;daemon frames;sendMeta">Frames from the daemon to the client</h3>
+<section class="sec" id="frame-demone" data-index="push;daemon frames;sendMeta"><h3 class="h-sec">4.3 · Frames from the daemon to the client</h3>
 <p>A single format: <code>type(1) + length(uint32 BE) + payload</code>, written by <code>push</code> under the mutex
 <code>cmu</code>.</p>
-<table>
+<figure class="tbl-wrap"><table class="tbl">
   <thead><tr><th>Type</th><th>Payload</th></tr></thead>
-  <tbody>
-    <tr><td><code>D</code></td><td>Raw output of the current window, or the restore package (modes + clear + replay).</td></tr>
-    <tr><td><code>M</code></td><td>Text metadata: first line <code>current_id\talt</code> (<code>alt</code> = 1 if the window is on the alternate screen), then one line <code>id\ttitle</code> per window.</td></tr>
-    <tr><td><code>B</code></td><td>Copy of the current window's replay buffer, in reply to <code>b</code>.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>D</code></td><td>Raw output of the current window, or the restore package (modes + clear + replay).</td></tr>
+<tr><td><code>M</code></td><td>Text metadata: first line <code>current_id\talt</code> (<code>alt</code> = 1 if the window is on the alternate screen), then one line <code>id\ttitle</code> per window.</td></tr>
+<tr><td><code>B</code></td><td>Copy of the current window's replay buffer, in reply to <code>b</code>.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 4.2 — Frames from the daemon to the client</figcaption></figure>
 <p>If a write to the client fails, <code>push</code> drops that client at once: the windows' output must
 never stay blocked on a dead connection.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="demone">The daemon</h2>
+<section class="chapter" id="demone"><div class="ch-head"><span class="ch-kick">Chapter 5</span><h2 class="h-ch">The daemon</h2></div>
 
-<p class="chapter-intro"><code>server.go</code>: windows, buffers, modes, restore.</p>
+<p class="lead"><code>server.go</code>: windows, buffers, modes, restore.</p>
 
-<h3 id="finestre" data-index="win;newWindow;createWindow;closeWindow">Windows</h3>
+<section class="sec" id="finestre" data-index="win;newWindow;createWindow;closeWindow"><h3 class="h-sec">5.1 · Windows</h3>
 <p>A window (<code>win</code>) consists of: id, PTY master, <code>exec.Cmd</code>, title, <code>alt</code> flag, replay
 buffer, map of modes, tail for split sequences. The <code>server</code> keeps the list <code>wins</code>,
 the current index <code>cur</code> and the next id <code>nextID</code>, which only ever grows: ids are not reused.</p>
@@ -269,16 +385,18 @@ the current index <code>cur</code> and the next id <code>nextID</code>, which on
 first window uses the command passed after <code>--</code>; <code>createWindow</code> (frame <code>C</code>) always starts
 the shell. <code>closeWindow</code> closes the master, kills the process, removes the window, realigns
 <code>cur</code> and repaints the new one; if it was the last one it calls <code>shutdown</code>.</p>
+</section>
 
-<h3 id="winreader" data-index="winReader;draining">Reading the windows</h3>
+<section class="sec" id="winreader" data-index="winReader;draining"><h3 class="h-sec">5.2 · Reading the windows</h3>
 <p>Each window has its own goroutine <code>winReader</code>, which reads the master in 32 KiB blocks
 <strong>always</strong>, even when the window is not visible or nobody is attached: that way a program is never left
 blocked on a write. For each block, under <code>s.mu</code>: it updates the modes (<code>scanModes</code>), appends it to the
 buffer (<code>record</code>); then, if the window is the current one, forwards it with <code>push('D')</code> and, if the
 alternate-screen state has changed, sends the metadata again. A read error (the shell has exited) closes the
 window. A <code>panic</code> is recorded in the log with the stack and closes only that window.</p>
+</section>
 
-<h3 id="replay" data-index="record;bufMax;replay buffer">Replay buffer</h3>
+<section class="sec" id="replay" data-index="record;bufMax;replay buffer"><h3 class="h-sec">5.3 · Replay buffer</h3>
 <p>Each window keeps the last bytes of output, up to <code>bufMax</code> = 5 MiB. Once the threshold is exceeded,
 <code>record</code> keeps only the last half (<code>bufKeep</code>) and moves the cut forward to the first
 <code>ESC</code>, so as not to restart from the middle of an escape sequence.</p>
@@ -286,8 +404,9 @@ window. A <code>panic</code> is recorded in the log with the stack and closes on
 the program redrawing itself on <code>SIGWINCH</code>: an idle shell or a TUI that redraws only
 partially (Claude Code) would otherwise come back with an empty screen. It is not emulation: they are the same bytes, replayed.
 Cost: up to 5 MiB of memory per window.</p>
+</section>
 
-<h3 id="modi" data-index="trackedModes;scanModes;appendModes;DEC modes;mouse tracking">Tracked DEC modes</h3>
+<section class="sec" id="modi" data-index="trackedModes;scanModes;appendModes;DEC modes;mouse tracking"><h3 class="h-sec">5.4 · Tracked DEC modes</h3>
 <p>Some private terminal modes, if left on by one window, spoil the others: the typical case is the
 <em>mouse tracking</em> of a TUI, which delivers every mouse movement to a shell as random characters. The
 daemon therefore keeps, for each window, the state of a fixed set of modes (<code>trackedModes</code>): cursor
@@ -301,48 +420,54 @@ a state, they do not toggle it.</p>
 order <code>trackedOrder</code> and preceded by <code>?1049h/l</code>. They are emitted before the replay: they turn off what
 the previous window had turned on and turn back on what is needed even if the original sequence has dropped out of the buffer
 because of the cut.</p>
+</section>
 
-<h3 id="repaint" data-index="repaint;activate;SIGWINCH;jiggle">Screen restore</h3>
+<section class="sec" id="repaint" data-index="repaint;activate;SIGWINCH;jiggle"><h3 class="h-sec">5.5 · Screen restore</h3>
 <p><code>repaint(w, cols, rows)</code> sends the client a single <code>D</code> frame with: the window's modes,
 <code>ESC [H ESC [2J</code> (clears the visible part, not the scrollback: no <code>3J</code>), the replay buffer.
 Then it sends the metadata and «jiggles» the PTY size (<code>rows-1</code> and then <code>rows</code>): the
 program receives a <code>SIGWINCH</code> in any case and TUIs realign themselves if the terminal has changed
 size in the meantime. It is used by <code>activate</code> (window switch), <code>createWindow</code>, <code>closeWindow</code> and the
 first resize after an attach.</p>
+</section>
 
-<h3 id="attach-demone" data-index="serveClient;needPaint;resize;eviction">Attach and sizes</h3>
+<section class="sec" id="attach-demone" data-index="serveClient;needPaint;resize;eviction"><h3 class="h-sec">5.6 · Attach and sizes</h3>
 <p><code>serveClient</code> replaces the previous client, closing its connection (the «eviction»: the old
 client sees the socket close, checks that the session is still alive and prints <em>sessione ripresa altrove</em> (session resumed elsewhere)).
 The restore does not happen at once: <code>needPaint</code> stays pending until the first <code>S</code> frame, when the
 new terminal's dimensions are known. <code>resize</code> applies the size to all windows, not only to
 the current one.</p>
+</section>
 
-<h3 id="concorrenza" data-index="mu;cmu;mutex">Concurrency</h3>
+<section class="sec" id="concorrenza" data-index="mu;cmu;mutex"><h3 class="h-sec">5.7 · Concurrency</h3>
 <p>Two mutexes: <code>mu</code> protects the state (windows, current one, sizes, client, buffers, modes);
 <code>cmu</code> serialises writes to the socket, so frames from different goroutines do not get mixed. Rule:
 <code>push</code> must never be called while holding <code>mu</code>, because it takes it itself. Functions copy what they need under
 <code>mu</code> and release it before writing.</p>
+</section>
 
-<h3 id="log-demone" data-index="logf;log;signals;SIGTERM;SIGHUP">Log and signals</h3>
+<section class="sec" id="log-demone" data-index="logf;log;signals;SIGTERM;SIGHUP"><h3 class="h-sec">5.8 · Log and signals</h3>
 <p>The daemon has no terminal: the log <code>NAME.log</code> (opened with <code>O_TRUNC</code>, hence emptied at every
 new session with the same name) is the only place where it can report startup, attaches and detaches, failures and
 <code>panic</code>s (with the stack, from <code>winReader</code> and <code>serveClient</code>). <code>SIGTERM</code> and
 <code>SIGHUP</code> lead to <code>shutdown</code>, so the socket is not left orphaned.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="client">The client</h2>
+<section class="chapter" id="client"><div class="ch-head"><span class="ch-kick">Chapter 6</span><h2 class="h-ch">The client</h2></div>
 
-<p class="chapter-intro"><code>client.go</code>: the pipe, the keys, the bar.</p>
+<p class="lead"><code>client.go</code>: the pipe, the keys, the bar.</p>
 
-<h3 id="avvio-client" data-index="attach;enterRaw;raw mode">Startup</h3>
+<section class="sec" id="avvio-client" data-index="attach;enterRaw;raw mode"><h3 class="h-sec">6.1 · Startup</h3>
 <p><code>attach</code> connects in mode <code>A</code>, puts stdin into raw mode (<code>enterRaw</code>: no
 echo, no canonical mode, no keyboard signals, no output translation), clears the screen, sets
 the scrolling region, sends the size and draws the bar. Then it launches three goroutines and waits on
 <code>endCh</code> for the reason it ended: <code>detached</code> (key or stdin closed) or <code>session</code>
 (socket closed by the daemon). A <code>SIGWINCH</code> handler sends the size again and redraws.</p>
+</section>
 
-<h3 id="cicli" data-index="readLoop;outputLoop;inputLoop">The three loops</h3>
-<ul>
+<section class="sec" id="cicli" data-index="readLoop;outputLoop;inputLoop"><h3 class="h-sec">6.2 · The three loops</h3>
+<ul class="ul">
   <li><code>readLoop</code> reads the frames from the socket and puts them on a channel.</li>
   <li><code>outputLoop</code> consumes them. For speed it <strong>coalesces</strong>: after one frame it drains all those already
       queued and does a single <code>write</code> to stdout. An <code>M</code> frame forces a flush first (to keep
@@ -353,8 +478,9 @@ the scrolling region, sends the size and draws the bar. Then it launches three g
       daemon in <code>D</code> frames; commands become control frames. An unknown key after the prefix
       is forwarded together with the prefix. If the overlay is open, keys go to <code>handleOverlayKey</code>.</li>
 </ul>
+</section>
 
-<h3 id="barra-tecnica" data-index="drawBar;buildBar;setRegion;scrolling region;DECSTBM">Status bar and scrolling region</h3>
+<section class="sec" id="barra-tecnica" data-index="drawBar;buildBar;setRegion;scrolling region;DECSTBM"><h3 class="h-sec">6.3 · Status bar and scrolling region</h3>
 <p>The bar takes up the last physical line. To the daemon the client declares <code>rows-1</code>, so the program never
 writes there; and it sets the scrolling region <code>ESC [1;rows-1 r</code>, so that a shell wrapping at the bottom
 scrolls above the bar instead of dragging it along. With fewer than 3 lines the bar is disabled and the program receives all the
@@ -368,19 +494,22 @@ attributes.</p>
 <p><code>buildBar</code> composes: <code>⬢ name</code>, the window ids (the current one in reverse video), and on the right
 <code>user@host  hh:mm:ss</code> or, for 4 seconds, the message from <code>setFlash</code>. The result is
 exactly as wide as the terminal; if it does not fit, the right-hand part is removed first and then it is truncated.</p>
+</section>
 
-<h3 id="overlay" data-index="overlay;Ctrl-a &quot;">The window overlay</h3>
+<section class="sec" id="overlay" data-index="overlay;Ctrl-a &quot;"><h3 class="h-sec">6.4 · The window overlay</h3>
 <p><kbd>Ctrl-a "</kbd> opens a list drawn by the client over the screen. While it is open, incoming
 <code>D</code> output is <strong>discarded</strong> (not queued). On closing, whether with a choice or with
 <kbd>Esc</kbd>, the client sends a <code>g</code>: even with the current id, this triggers a <code>repaint</code> that
 rebuilds the screen from the buffer, including what had been discarded.</p>
+</section>
 
-<h3 id="cleanup" data-index="cleanup;detach">Cleanup on detach</h3>
+<section class="sec" id="cleanup" data-index="cleanup;detach"><h3 class="h-sec">6.5 · Cleanup on detach</h3>
 <p><code>cleanup</code> leaves the user's terminal tidy: if the window was on the alternate screen it exits with
 <code>?1049l</code>; it turns off mouse, focus and bracketed paste; shows the cursor again; resets the attributes; removes the
 scrolling region and erases the bar. Then <code>restoreTerm</code> restores the terminal settings.</p>
+</section>
 
-<h3 id="salvataggio" data-index="saveBuffer;plainText;escLen;Ctrl-a s">Saving and conversion to text</h3>
+<section class="sec" id="salvataggio" data-index="saveBuffer;plainText;escLen;Ctrl-a s"><h3 class="h-sec">6.6 · Saving and conversion to text</h3>
 <p><kbd>Ctrl-a s</kbd> sends <code>b</code>; the daemon replies with a copy of the buffer in a <code>B</code> frame;
 <code>saveBuffer</code> writes into the <em>client</em>'s current folder
 <code>mterm-SESSION-wID-hhmmss.raw</code> (raw bytes) and <code>.txt</code> (via <code>plainText</code>). The name
@@ -389,32 +518,37 @@ of the session goes through <code>sanitizeName</code>.</p>
 DCS/SOS/PM/APC up to BEL or ST, character set designation, ESC plus one byte) and applies minimal line logic:
 <code>\r</code> returns to the start of the line and overwrites, backspace, tabs every 8, trailing spaces removed, other controls
 ignored. Progress bars and rewritten prompts are cleaned up; the vertical cursor movements of TUIs are not.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="pty">PTY and terminal</h2>
+<section class="chapter" id="pty"><div class="ch-head"><span class="ch-kick">Chapter 7</span><h2 class="h-ch">PTY and terminal</h2></div>
 
-<p class="chapter-intro">The system calls, without external libraries.</p>
+<p class="lead">The system calls, without external libraries.</p>
 
-<h3 id="openpty" data-index="openPTY;ptmx;TIOCSPTLCK;TIOCGPTN">Opening a PTY</h3>
+<section class="sec" id="openpty" data-index="openPTY;ptmx;TIOCSPTLCK;TIOCGPTN"><h3 class="h-sec">7.1 · Opening a PTY</h3>
 <p><code>openPTY</code> opens <code>/dev/ptmx</code> with <code>O_NOCTTY</code>, unlocks the slave
 (<code>TIOCSPTLCK</code> = <code>0x40045431</code>) and reads its number (<code>TIOCGPTN</code> =
 <code>0x80045430</code>), returning the master and <code>/dev/pts/N</code>. The two constants are those of Linux's
 generic family, valid on amd64 and arm64 (not, for example, on mips or powerpc).</p>
+</section>
 
-<h3 id="startshell" data-index="startShell;Setsid;Setctty;O_NOCTTY">Starting the program</h3>
+<section class="sec" id="startshell" data-index="startShell;Setsid;Setctty;O_NOCTTY"><h3 class="h-sec">7.2 · Starting the program</h3>
 <p><code>startShell</code> opens the slave with <code>O_NOCTTY</code> (the daemon must not take it as its own controlling
 terminal, otherwise the child could not) and starts the command with stdin/stdout/stderr on the slave,
 <code>Setsid</code> and <code>Setctty</code> on descriptor 0: the child becomes leader of a new session with the
 slave as its controlling terminal, so job control and <kbd>Ctrl-C</kbd> work. The environment is that of the
 daemon, that is, of whoever created the session: <code>TERM</code> included, left untouched.</p>
+</section>
 
-<h3 id="winsize" data-index="setWinsize;termSize;TIOCSWINSZ">Sizes</h3>
+<section class="sec" id="winsize" data-index="setWinsize;termSize;TIOCSWINSZ"><h3 class="h-sec">7.3 · Sizes</h3>
 <p><code>setWinsize</code> does <code>TIOCSWINSZ</code> on the master: the kernel sends <code>SIGWINCH</code> to the foreground
 group. <code>termSize</code> reads the size from stdout, stderr, stdin or <code>/dev/tty</code>, falling back to
 80×24.</p>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="guida" data-index="helpSections;runTUI;displayHelp">Built-in guide</h2>
+<section class="chapter sec" id="guida" data-index="helpSections;runTUI;displayHelp"><div class="ch-head"><span class="ch-kick">Chapter 8</span><h2 class="h-ch">Built-in guide</h2></div>
+
 <p><code>help.go</code> holds the contents only once: <code>helpSections</code> (commands and keys),
 <code>helpExamples</code>, <code>descrizione</code>. From there come both the man-style page (<code>buildHelp</code>) and
 the TUI tabs (<code>buildTabs</code> in <code>tui.go</code>). <code>displayHelp</code> chooses: plain text
@@ -422,38 +556,40 @@ without colours if stdin or stdout is not a terminal; otherwise the TUI (alterna
 if the TUI does not start, the man page through <code>$PAGER</code>, <code>less -R -F -X</code> or <code>more</code>.</p>
 <p>The version is in the last line of the man page, <code>"mterm 1.0"</code>: it is the value that
 <code>check-docs.py</code> compares with the manuals, the README and the string inside the committed executable.</p>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="test">Tests</h2>
+<section class="chapter" id="test"><div class="ch-head"><span class="ch-kick">Chapter 9</span><h2 class="h-ch">Tests</h2></div>
 
-<p class="chapter-intro">End-to-end tests on the real executable, through a real PTY.</p>
+<p class="lead">End-to-end tests on the real executable, through a real PTY.</p>
 
-<h3 id="come-funzionano" data-index="pty.fork;e2e">How they work</h3>
+<section class="sec" id="come-funzionano" data-index="pty.fork;e2e"><h3 class="h-sec">9.1 · How they work</h3>
 <p>Each test is a Python 3 script that uses only the standard library: <code>pty.fork()</code> launches
 <code>../mterm</code> inside a PTY of known size, sends keys as a user would and reads what mterm writes
 to the terminal, looking for exact bytes (escape sequences included). Each check prints <code>OK</code> or
 <code>FALLITO</code> (failed); the exit status is 1 if at least one has failed. The environment is isolated:
 <code>XDG_RUNTIME_DIR</code> points to a test folder (<code>make e2e</code> uses
 <code>/tmp/mterm-test-xrt</code>), <code>SHELL=/bin/sh</code>, <code>TERM=xterm-256color</code>.</p>
+</section>
 
-<h3 id="elenco-test" data-index="end-to-end tests">The tests</h3>
-<table id="test-list">
+<section class="sec" id="elenco-test" data-index="end-to-end tests"><h3 class="h-sec">9.2 · The tests</h3>
+<figure class="tbl-wrap"><table class="tbl" id="test-list">
   <thead><tr><th>File</th><th>What it checks</th></tr></thead>
-  <tbody>
-    <tr><td><code>e2e.py</code></td><td>Basic cycle: <code>new</code>, command in the session, detach with <kbd>Ctrl-a d</kbd>, the session survives, reattach with a live shell, the shell exiting closes the session.</td></tr>
-    <tr><td><code>e2e2.py</code></td><td>The distinctive properties: 24-bit colour passed through intact, the program sees <code>rows-1</code>, live output after reattach, eviction of the first client by the second.</td></tr>
-    <tr><td><code>e2e3.py</code></td><td>Windows and the <em>Default</em> session: <code>mterm</code> with no arguments, <kbd>Ctrl-a c</kbd>, bar with two windows, <kbd>Ctrl-a p</kbd>, overlay <kbd>Ctrl-a "</kbd>, <kbd>Ctrl-a k</kbd>, closing the last window.</td></tr>
-    <tr><td><code>e2e4.py</code></td><td>Scrolling region: reasserted on the normal screen after a reset (<code>ESC [r</code>), left untouched on the alternate screen, reasserted again on returning.</td></tr>
-    <tr><td><code>e2e5.py</code></td><td>Replay buffer: the screen comes back on reattach without the program redrawing, each window's contents are preserved on switching, the log exists.</td></tr>
-    <tr><td><code>e2e6.py</code></td><td>Mode hygiene: mouse turned off when switching to another window, turned back on when returning (from the tracked state), sequence split across two reads recognised, turned off on detach.</td></tr>
-  </tbody>
-</table>
+<tbody>
+<tr><td><code>e2e.py</code></td><td>Basic cycle: <code>new</code>, command in the session, detach with <kbd>Ctrl-a d</kbd>, the session survives, reattach with a live shell, the shell exiting closes the session.</td></tr>
+<tr><td><code>e2e2.py</code></td><td>The distinctive properties: 24-bit colour passed through intact, the program sees <code>rows-1</code>, live output after reattach, eviction of the first client by the second.</td></tr>
+<tr><td><code>e2e3.py</code></td><td>Windows and the <em>Default</em> session: <code>mterm</code> with no arguments, <kbd>Ctrl-a c</kbd>, bar with two windows, <kbd>Ctrl-a p</kbd>, overlay <kbd>Ctrl-a "</kbd>, <kbd>Ctrl-a k</kbd>, closing the last window.</td></tr>
+<tr><td><code>e2e4.py</code></td><td>Scrolling region: reasserted on the normal screen after a reset (<code>ESC [r</code>), left untouched on the alternate screen, reasserted again on returning.</td></tr>
+<tr><td><code>e2e5.py</code></td><td>Replay buffer: the screen comes back on reattach without the program redrawing, each window's contents are preserved on switching, the log exists.</td></tr>
+<tr><td><code>e2e6.py</code></td><td>Mode hygiene: mouse turned off when switching to another window, turned back on when returning (from the tracked state), sequence split across two reads recognised, turned off on detach.</td></tr>
+</tbody>
+</table><figcaption class="cap">Table 9.1 — The end-to-end tests</figcaption></figure>
 <p>There are no Go unit tests: every property that matters concerns the behaviour seen from a terminal, and is
 verified that way.</p>
+</section>
 
-<h3 id="controlli-doc" data-index="check-docs.py">Documentation checks</h3>
+<section class="sec" id="controlli-doc" data-index="check-docs.py"><h3 class="h-sec">9.3 · Documentation checks</h3>
 <p><code>tools/check-docs.py</code>, run by <code>make test</code> and by the CI, fails if:</p>
-<ul>
+<ul class="ul">
   <li>an entry of <code>helpSections</code> has, in the <a href="User%20Manual.html#riferimento">reference section of the User
       Manual</a>, no <code>&lt;dt data-help="…"&gt;</code> with exactly the same text, or vice versa;</li>
   <li>a <code>.go</code> file is missing from the <a href="#mappa-file">file map</a>, or the line counts given differ by
@@ -463,10 +599,12 @@ verified that way.</p>
   <li>the version does not match in <code>README.md</code>, <code>docs/index.html</code> and the two manuals;</li>
   <li>an <code>#anchor</code> link in the manuals points to a non-existent id.</li>
 </ul>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="convenzioni">Conventions</h2>
-<ul>
+<section class="chapter sec" id="convenzioni"><div class="ch-head"><span class="ch-kick">Chapter 10</span><h2 class="h-ch">Conventions</h2></div>
+
+<ul class="ul">
   <li><strong>Italian everywhere, except the manuals</strong>: messages, comments, built-in guide, commit messages; these two manuals are in English.</li>
   <li><strong>No dependencies</strong>: standard library only; system calls are made with
       <code>syscall</code>.</li>
@@ -480,12 +618,12 @@ verified that way.</p>
   <li><code>gofmt</code> and <code>go vet</code> clean; errors for the user via <code>fatal</code>, prefix
       <code>mterm:</code>, status 1.</li>
 </ul>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="limiti">Known limitations and open issues</h2>
+<section class="chapter" id="limiti"><div class="ch-head"><span class="ch-kick">Chapter 11</span><h2 class="h-ch">Known limitations and open issues</h2></div>
 
-<h3 id="limiti-noti" data-index="known limitations;bug">Known limitations</h3>
-<ul>
+<section class="sec" id="limiti-noti" data-index="known limitations;bug"><h3 class="h-sec">11.1 · Known limitations</h3>
+<ul class="ul">
   <li><strong>Windows beyond 9</strong>: <kbd>Ctrl-a</kbd> plus a digit and the overlay accept a single character, and
       ids are not reused; from window 10 onwards they can only be reached with <kbd>n</kbd>/<kbd>p</kbd>.</li>
   <li><strong><code>new</code> without a terminal</strong>: the daemon starts, then <code>attach</code> fails on
@@ -505,50 +643,398 @@ verified that way.</p>
   <li><strong>Log</strong>: started over at every session with the same name; the log of a crashed session must be
       read before recreating it.</li>
 </ul>
+</section>
 
-<h3 id="idee" data-index="ideas;TODO">Ideas for the future</h3>
-<ul>
+<section class="sec" id="idee" data-index="ideas;TODO"><h3 class="h-sec">11.2 · Ideas for the future</h3>
+<ul class="ul">
   <li>Choosing windows beyond 9 in the overlay (more digits or arrows).</li>
   <li>Renaming sessions and windows; titles from the app's OSC sequences.</li>
   <li><code>mterm new -d</code> to create a detached session without an error.</li>
   <li>Checking the owner and permissions of the socket folder.</li>
 </ul>
+</section>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="glossario" class="unnumbered">Glossary</h2>
-<dl class="defs">
-  <dt id="g-pty" data-kind="termine" data-index="PTY (term)">PTY</dt>
+<section class="chapter sec" id="glossario"><div class="ch-head"><span class="ch-kick">Chapter 12</span><h2 class="h-ch">Glossary</h2></div>
+
+<dl class="deflist">
+  <dt id="g-pty" data-kind="termine" data-index="PTY (term)"><span class="dt-t">PTY</span></dt>
   <dd>Pseudo-terminal: a kernel master/slave pair. The program uses the slave as if it were a terminal; whoever holds
       the master reads what it writes and sends it input.</dd>
-  <dt id="g-raw" data-kind="termine" data-index="raw mode (term)">Raw mode</dt>
+  <dt id="g-raw" data-kind="termine" data-index="raw mode (term)"><span class="dt-t">Raw mode</span></dt>
   <dd>Terminal setting in which every key reaches the program immediately, without echo or line processing.</dd>
-  <dt id="g-dec" data-kind="termine" data-index="DEC private mode">DEC private mode</dt>
+  <dt id="g-dec" data-kind="termine" data-index="DEC private mode"><span class="dt-t">DEC private mode</span></dt>
   <dd>Terminal setting turned on with <code>ESC [ ? n h</code> and turned off with <code>ESC [ ? n l</code>.</dd>
-  <dt id="g-alt" data-kind="termine" data-index="alternate screen (term)">Alternate screen</dt>
+  <dt id="g-alt" data-kind="termine" data-index="alternate screen (term)"><span class="dt-t">Alternate screen</span></dt>
   <dd>The terminal's second screen, without scrollback, used by full-screen programs (mode 1049).</dd>
-  <dt id="g-decstbm" data-kind="termine" data-index="DECSTBM (term)">Scrolling region</dt>
+  <dt id="g-decstbm" data-kind="termine" data-index="DECSTBM (term)"><span class="dt-t">Scrolling region</span></dt>
   <dd>Range of lines within which the terminal scrolls text (<code>ESC [ top ; bottom r</code>).</dd>
-  <dt id="g-sync" data-kind="termine" data-index="Synchronized Update Mode">Synchronized Update Mode</dt>
+  <dt id="g-sync" data-kind="termine" data-index="Synchronized Update Mode"><span class="dt-t">Synchronized Update Mode</span></dt>
   <dd>Mode 2026: the terminal shows everything between switching it on and switching it off in one go.</dd>
-  <dt id="g-sigwinch" data-kind="termine" data-index="SIGWINCH (term)">SIGWINCH</dt>
+  <dt id="g-sigwinch" data-kind="termine" data-index="SIGWINCH (term)"><span class="dt-t">SIGWINCH</span></dt>
   <dd>Signal that tells a program that the size of its terminal has changed.</dd>
-  <dt id="g-bundle" data-kind="termine" data-index="git bundle">Git bundle</dt>
+  <dt id="g-bundle" data-kind="termine" data-index="git bundle"><span class="dt-t">Git bundle</span></dt>
   <dd>A file that contains a complete git repository, from which you can clone without a network.</dd>
 </dl>
+</section>
 
-<!-- ===================================================================== -->
-<h2 id="index" class="unnumbered">Index</h2>
-<div id="index-list"></div>
-
-<footer class="doc-footer">
-  mterm — Technical Manual, for version 1.0. See also the <a href="User%20Manual.html">User Manual</a> and
-  <a href="https://github.com/nic-fio/MTERM/blob/main/docs/decisions-and-history.md">the project's decisions and history</a>.
-  <br>Copyright (c) 2026 nic-fio. All rights reserved.
-</footer>
-
+<section class="chapter" id="index"><div class="ch-head"><span class="ch-kick">Chapter 13</span><h2 class="h-ch">Index</h2></div>
+<div id="index-list" class="idx"></div>
+</section>
 </main>
+  </div>
+  <footer class="doc-foot">mterm · Technical Manual · Version 1.0 · September 2026 · © 2026 Nicola Fiorillo</footer>
 </div>
 <script src="assets/vendor/mermaid.min.js"></script>
-<script src="assets/docs.js"></script>
-</body>
-</html>
+<script>
+/* Solo per i diagrammi: Mermaid (copia locale in assets/vendor, licenza MIT) con i colori del manuale.
+   Senza Mermaid il diagramma resta come testo. */
+(function () {
+  "use strict";
+  var pres = document.querySelectorAll(".main pre.mermaid");
+  if (!pres.length || !window.mermaid) return;
+  var F = "Outfit,-apple-system,Segoe UI,Roboto,Arial,sans-serif";
+  window.mermaid.initialize({
+    startOnLoad: false, securityLevel: "strict", theme: "base", fontFamily: F,
+    flowchart: { htmlLabels: true }, sequence: { mirrorActors: false },
+    themeVariables: {
+      fontFamily: F, fontSize: "14px", background: "#f8fafc",
+      primaryColor: "#eff6ff", primaryTextColor: "#0f172a", primaryBorderColor: "#0050C0",
+      secondaryColor: "#f1f5f9", tertiaryColor: "#ffffff", lineColor: "#475569", textColor: "#0f172a",
+      nodeTextColor: "#0f172a", edgeLabelBackground: "#ffffff", clusterBkg: "#ffffff", clusterBorder: "#bfdbfe",
+      actorBkg: "#eff6ff", actorBorder: "#0050C0", actorTextColor: "#0f172a", actorLineColor: "#94a3b8",
+      signalColor: "#334155", signalTextColor: "#0f172a", labelBoxBkgColor: "#eff6ff", labelBoxBorderColor: "#0050C0",
+      labelTextColor: "#0f172a", loopTextColor: "#0f172a", noteBkgColor: "#fffbeb", noteBorderColor: "#d97706",
+      noteTextColor: "#0f172a", activationBkgColor: "#dbeafe", activationBorderColor: "#0050C0"
+    }
+  });
+  /* il sorgente esce subito dal testo della pagina; il disegno arriva dopo manual.js,
+     cosi' la ricerca non legge ne' il sorgente ne' lo stile interno dei diagrammi */
+  var srcs = Array.prototype.map.call(pres, function (pre) { var s = pre.textContent; pre.textContent = ""; return s; });
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(pres, function (pre, i) {
+      window.mermaid.render("diagram-" + (i + 1), srcs[i]).then(function (r) {
+        pre.innerHTML = r.svg;
+      }, function () { pre.textContent = srcs[i]; });
+    });
+  });
+})();
+</script>
+<script>window.MANUAL_CODE_TERMS=[];</script>
+<script>
+/* Script comune dei manuali dei 7 progetti: ricerca, indice analitico, pulsante Copy. Uguale in tutti i manuali. */
+/* Ricerca nella barra laterale e indice analitico. Senza dipendenze; senza
+   JavaScript il manuale resta completo (la casella di ricerca resta nascosta). */
+(function () {
+  "use strict";
+  var main = document.querySelector(".main");
+  if (!main) return;
+
+  // Minuscole e senza accenti, carattere per carattere: la lunghezza resta
+  // uguale, così le posizioni trovate valgono anche sul testo originale.
+  function fold(s) {
+    var o = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      var f = c.normalize ? c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : c.toLowerCase();
+      o += f.length === 1 ? f : c;
+    }
+    return o;
+  }
+  function esc(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function secTitle(sec) {
+    var h = sec && sec.querySelector("h3.h-sec, h2.h-ch");
+    return h ? h.textContent.replace(/\s+/g, " ").trim() : "";
+  }
+  function splitTitle(t) { // "5.3 · Interruzioni e ripresa" -> ["5.3", "Interruzioni e ripresa"]
+    var m = /^([\d.]+) · (.*)$/.exec(t);
+    return m ? [m[1], m[2]] : ["", t];
+  }
+
+  /* ---------------- indice analitico ---------------- */
+  var list = document.getElementById("index-list");
+  if (list) {
+    var terms = {};
+    var els = main.querySelectorAll("[data-index]");
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var target = el.id ? el : el.closest("[id]");
+      if (!target || target.id === "index") continue;
+      var sec = el.closest(".sec") || el.closest(".chapter");
+      var label = splitTitle(secTitle(sec));
+      var names = el.getAttribute("data-index").split(";");
+      for (var j = 0; j < names.length; j++) {
+        var name = names[j].trim();
+        if (!name) continue;
+        var key = fold(name);
+        var t = terms[key] || (terms[key] = { name: name, refs: [], seen: {} });
+        if (t.seen[target.id]) continue;
+        t.seen[target.id] = true;
+        t.refs.push({ id: target.id, n: label[0], title: label[1] });
+      }
+    }
+    var sortKey = function (k) { return k.replace(/^[-.]+/, ""); };
+    var keys = Object.keys(terms).sort(function (a, b) {
+      return sortKey(a).localeCompare(sortKey(b), "en") || a.localeCompare(b, "en");
+    });
+    var groups = [], cur = null;
+    keys.forEach(function (k) {
+      var ch = sortKey(k).charAt(0).toUpperCase();
+      if (!/[A-Z]/.test(ch)) ch = "#";
+      if (!cur || cur.ch !== ch) { cur = { ch: ch, items: [] }; groups.push(cur); }
+      cur.items.push(terms[k]);
+    });
+    var out = "";
+    groups.forEach(function (g) {
+      out += '<div class="idx-g"><h3 class="idx-l">' + g.ch + '</h3><ul class="idx-ul">';
+      g.items.forEach(function (t) {
+        // Voci da mostrare come codice: nomi di file e opzioni, piu' le parole
+        // che il manuale elenca in window.MANUAL_CODE_TERMS (prima di questo script).
+        var isCode = /^[-.]|_|\.(txt|sh|example|conf|toml|json|md|py|efi|nsb)$/.test(t.name) ||
+          (window.MANUAL_CODE_TERMS || []).indexOf(t.name) >= 0;
+        var nm = isCode ? "<code>" + esc(t.name) + "</code>" : esc(t.name);
+        out += '<li><span class="idx-t">' + nm + "</span> — " + t.refs.map(function (r) {
+          return '<a href="' + '#' + r.id + '" title="' + esc(r.title) + '">' + (r.n ? r.n + " " : "") + esc(r.title) + "</a>";
+        }).join(", ") + "</li>";
+      });
+      out += "</ul></div>";
+    });
+    list.innerHTML = out;
+  }
+
+  /* ---------------- ricerca ---------------- */
+  var box = document.getElementById("srch");
+  var q = document.getElementById("srch-q");
+  var info = document.getElementById("srch-info");
+  var res = document.getElementById("srch-res");
+  var toc = document.getElementById("toc");
+  if (!box || !q) return;
+  box.hidden = false;
+
+  var secs = [];
+  var nodes = main.querySelectorAll(".sec");
+  for (var k = 0; k < nodes.length; k++) {
+    var s = nodes[k];
+    if (s.closest("#index")) continue;
+    var parts = [], w = document.createTreeWalker(s, NodeFilter.SHOW_TEXT, null), tn;
+    while ((tn = w.nextNode())) if (!tn.parentNode.closest("h3.h-sec")) parts.push(tn.data);
+    var txt = parts.join(" ").replace(/\s+/g, " ").replace(/ ([,.;:)!?»])/g, "$1").replace(/([(«]) /g, "$1").trim();
+    var tt = secTitle(s);
+    secs.push({ el: s, id: s.id, title: tt, ftitle: fold(tt), text: txt, ftext: fold(txt) });
+  }
+  var tocLinks = {};
+  if (toc) {
+    var as = toc.querySelectorAll("a");
+    for (var a = 0; a < as.length; a++) tocLinks[as[a].getAttribute("href").slice(1)] = as[a].parentNode;
+  }
+
+  function count(hay, w) {
+    var n = 0, p = hay.indexOf(w);
+    while (p >= 0) { n++; p = hay.indexOf(w, p + w.length); }
+    return n;
+  }
+  function markWords(s, fs, words) { // testo -> HTML con <mark> sulle parole cercate
+    var ranges = [];
+    words.forEach(function (w) {
+      var p = fs.indexOf(w);
+      while (p >= 0) { ranges.push([p, p + w.length]); p = fs.indexOf(w, p + w.length); }
+    });
+    ranges.sort(function (x, y) { return x[0] - y[0]; });
+    var o = "", last = 0;
+    ranges.forEach(function (r) {
+      if (r[0] < last) return;
+      o += esc(s.slice(last, r[0])) + "<mark>" + esc(s.slice(r[0], r[1])) + "</mark>";
+      last = r[1];
+    });
+    return o + esc(s.slice(last));
+  }
+
+  function clearMarks() {
+    var ms = main.querySelectorAll("mark.hit");
+    for (var i = 0; i < ms.length; i++) {
+      var m = ms[i], p = m.parentNode;
+      p.replaceChild(document.createTextNode(m.textContent), m);
+      p.normalize();
+    }
+  }
+  function highlight(root, words) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        return n.parentNode.closest("svg, script, style, mark") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var list = [], n;
+    while ((n = walker.nextNode())) list.push(n);
+    var first = null;
+    list.forEach(function (node) {
+      var s = node.data, fs = fold(s), ranges = [];
+      words.forEach(function (w) {
+        var p = fs.indexOf(w);
+        while (p >= 0) { ranges.push([p, p + w.length]); p = fs.indexOf(w, p + w.length); }
+      });
+      if (!ranges.length) return;
+      ranges.sort(function (x, y) { return x[0] - y[0]; });
+      var frag = document.createDocumentFragment(), last = 0;
+      ranges.forEach(function (r) {
+        if (r[0] < last) return;
+        if (r[0] > last) frag.appendChild(document.createTextNode(s.slice(last, r[0])));
+        var m = document.createElement("mark");
+        m.className = "hit";
+        m.textContent = s.slice(r[0], r[1]);
+        frag.appendChild(m);
+        if (!first) first = m;
+        last = r[1];
+      });
+      if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+    return first;
+  }
+
+  var found = [], sel = -1, words = [];
+  function search() {
+    var v = fold(q.value.trim());
+    words = v.split(/\s+/).filter(function (w) { return w.length > 0; });
+    found = [];
+    sel = -1;
+    Object.keys(tocLinks).forEach(function (id) { tocLinks[id].classList.remove("toc-hit"); });
+    if (v.length < 2) {
+      res.innerHTML = "";
+      info.textContent = v.length ? "Type at least two letters." : "";
+      if (toc) toc.classList.remove("filtering");
+      clearMarks();
+      return;
+    }
+    secs.forEach(function (s) {
+      var score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var c = count(s.ftext, words[i]);
+        var inTitle = s.ftitle.indexOf(words[i]) >= 0;
+        if (!c && !inTitle) return;
+        score += c + (inTitle ? 20 : 0);
+      }
+      found.push({ s: s, score: score });
+    });
+    found.sort(function (x, y) { return y.score - x.score; });
+    info.textContent = found.length
+      ? (found.length === 1 ? "1 section found" : found.length + " sections found") + " · Enter to open the first"
+      : "No results.";
+    var html = "";
+    found.slice(0, 15).forEach(function (f, i) {
+      var s = f.s, p = Math.max(0, s.ftext.indexOf(words[0]));
+      var a = Math.max(0, p - 50), b = Math.min(s.text.length, p + words[0].length + 70);
+      var snip = (a > 0 ? "…" : "") + markWords(s.text.slice(a, b), s.ftext.slice(a, b), words) + (b < s.text.length ? "…" : "");
+      var t = splitTitle(s.title);
+      html += '<li><a href="' + '#' + s.id + '" data-i="' + i + '"><span class="r-t"><span class="toc-n">' + t[0] +
+        "</span><span>" + esc(t[1]) + '</span></span><span class="r-s">' + snip + "</span></a></li>";
+    });
+    res.innerHTML = html;
+    if (toc) {
+      toc.classList.add("filtering");
+      found.forEach(function (f) {
+        var li = tocLinks[f.s.id];
+        if (li) li.classList.add("toc-hit");
+        var ch = f.s.el.closest(".chapter");
+        if (ch && tocLinks[ch.id]) tocLinks[ch.id].classList.add("toc-hit");
+      });
+    }
+  }
+  function go(i) {
+    var f = found[i];
+    if (!f) return;
+    clearMarks();
+    var first = highlight(f.s.el, words);
+    if (history.replaceState) history.replaceState(null, "", "#" + f.s.id);
+    (first || f.s.el).scrollIntoView({ block: first ? "center" : "start" });
+    f.s.el.classList.remove("flash");
+    void f.s.el.offsetWidth;
+    f.s.el.classList.add("flash");
+  }
+  function setSel(i) {
+    var links = res.querySelectorAll("a");
+    if (!links.length) return;
+    sel = (i + links.length) % links.length;
+    for (var k = 0; k < links.length; k++) links[k].classList.toggle("on", k === sel);
+    links[sel].scrollIntoView({ block: "nearest" });
+  }
+
+  var timer = null;
+  q.addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(search, 120);
+  });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer); search(); go(sel >= 0 ? sel : 0); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); setSel(sel + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSel(sel - 1); }
+    else if (e.key === "Escape") { q.value = ""; search(); q.blur(); }
+  });
+  res.addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-i]");
+    if (!a) return;
+    e.preventDefault();
+    go(+a.getAttribute("data-i"));
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    e.preventDefault();
+    q.focus();
+    q.select();
+  });
+})();
+/* Pulsante Copy sui blocchi di comandi: copia le righe che iniziano con il
+   prompt "$ ", senza il prompt. L'etichetta sta in CSS (data-l), cosi' non
+   entra nel testo della pagina ne' nella ricerca. */
+(function () {
+  "use strict";
+  var pres = document.querySelectorAll(".main pre.code");
+  for (var i = 0; i < pres.length; i++) (function (pre) {
+    var lines = pre.textContent.replace(/\s+$/, "").split("\n"), cmds = [];
+    for (var k = 0; k < lines.length; k++) {
+      var m = /^\$ (.*)$/.exec(lines[k]);
+      if (m) cmds.push(m[1]);
+    }
+    if (!cmds.length) return;              // non e' un blocco di comandi
+    var text = cmds.join("\n");
+    var wrap = document.createElement("div");
+    wrap.className = "code-w";
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "copy";
+    btn.setAttribute("data-l", "Copy");
+    btn.setAttribute("aria-label", "Copy the command" + (cmds.length > 1 ? "s" : ""));
+    btn.title = "Copy the command" + (cmds.length > 1 ? "s" : "");
+    var t = null;
+    function done() {
+      btn.setAttribute("data-l", "Copied");
+      btn.classList.add("ok");
+      clearTimeout(t);
+      t = setTimeout(function () { btn.setAttribute("data-l", "Copy"); btn.classList.remove("ok"); }, 1400);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { if (document.execCommand("copy")) done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    btn.addEventListener("click", function () {
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    });
+    wrap.appendChild(btn);
+  })(pres[i]);
+})();
+</script>
+</body></html>

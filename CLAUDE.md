@@ -39,7 +39,7 @@ Il perché di ciascuna è in [docs/decisions-and-history.md](docs/decisions-and-
 | **L'eseguibile sta nel repository** | `./mterm` (Linux x86-64, statico) è registrato, così un `git clone` basta anche senza Go. `make` lo rigenera. |
 | **Go 1.24** | Quello di Debian 13 (`golang-go`), il sistema del tablet. |
 | **Nessuna licenza** | Copyright nic-fio, tutti i diritti riservati; il codice è pubblico per poterlo leggere e recuperare. |
-| **Manuali in inglese, tema chiaro** | `docs/User Manual.html` e `docs/Technical Manual.html`, stesso impianto di NG-EFI_SHELL e HOSTER (HTML in `docs/`, GitHub Pages). Struttura, palette e stile non si toccano; gli attributi `data-help` restano identici alla guida integrata in italiano. |
+| **Manuali in inglese, stile comune** | `docs/User Manual.html` e `docs/Technical Manual.html`, nello **stile comune dei manuali dei sette progetti** (AMS, EFI_PARTITION_MANAGER, HOSTER, MTERM, NESH, PHONESTRA, SCRAPER): ogni manuale è un unico file HTML autosufficiente, con lo stile e lo script comuni (`manual.css`, `manual.js`) incorporati e identici byte per byte in tutti i progetti; copertina con logo, «User Manual» o «Technical Manual», versione e data; barra laterale con ricerca e indice; capitoli e sezioni numerati, tabelle e figure numerate con didascalia, indice analitico; piè di pagina `mterm · User Manual · Version X · Mese AAAA · © 2026 Nicola Fiorillo`; solo tema chiaro; GitHub Pages. Lo stile non si cambia in un solo progetto (aggiunte solo in un blocco finale `/* Solo per mterm: … */`, se indispensabili). Unica risorsa esterna al file: Mermaid per i diagrammi, dalla copia locale `docs/assets/vendor/`. Gli attributi `data-help` restano identici alla guida integrata in italiano. |
 
 ## Il repository
 
@@ -47,9 +47,9 @@ Il perché di ciascuna è in [docs/decisions-and-history.md](docs/decisions-and-
 |---|---|
 | `*.go` | Il programma (`package main`): vedi la mappa dei file nel manuale tecnico. |
 | `tests/e2e*.py` | Sei test end-to-end in Python su una PTY reale. |
-| `docs/` | `User Manual.html`, `Technical Manual.html` (in inglese; nei link lo spazio si scrive `%20`), `index.html`, `decisions-and-history.md`, `assets/`. Pubblicati con GitHub Pages. |
+| `docs/` | `User Manual.html`, `Technical Manual.html` (in inglese; nei link lo spazio si scrive `%20`), `index.html`, `decisions-and-history.md`, `assets/vendor/` (Mermaid, per i diagrammi). Pubblicati con GitHub Pages. |
 | `tools/` | `setup-dev.sh` (pacchetti e identità git), `backup.sh` (bundle git), `check-docs.py` (controlli dei manuali). |
-| `logos/` | `mterm-logo.png`, il logo (PNG 2172×724, sfondo bianco). Non è usato nei manuali. |
+| `logos/` | `mterm-logo.png`, il logo (PNG 2172×724, sfondo bianco). Non si modifica: la copertina dei manuali ne incorpora una copia trasparente, ritagliata e ridotta. |
 | `mterm` | L'eseguibile Linux x86-64, **registrato**: va rigenerato con `make` e registrato insieme a ogni modifica del codice. |
 | `dist/` | Binari per le release, mai registrati. |
 
@@ -76,7 +76,7 @@ comuni di `make`: `all`, `test`, `docs-check`, `clean`.
    (indirizzo noreply di GitHub), che tiene fuori quello personale.
 
 Rilascio: aggiorna la versione in `help.go` (`"mterm 1.0"`), in `README.md`,
-`docs/index.html` e nei due manuali (`<b>Version</b>`, sono in inglese), poi crea un tag annotato `vX.Y.Z` e fai
+`docs/index.html` e nei due manuali (`Version` in copertina e nel piè di pagina, sono in inglese), poi crea un tag annotato `vX.Y.Z` e fai
 push del tag: la CI costruisce i binari Linux amd64/arm64 e pubblica la
 release, con il messaggio del tag come note.
 
